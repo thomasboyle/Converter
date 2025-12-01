@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<title>Telinquents</title>
+
+	<!-- Favicon -->
+	<link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='favicon.jpg') }}">
+	<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.jpg') }}">
+	<link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.jpg') }}">
+
+	<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+	<div class="container">
+						<!-- Card Shelf Headers -->
+						<div class="card-shelf-headers">
+							<h2>The latest.</h2>
+							<p>Take a look at what's new, right now.</p>
+						</div>
+
+						<!-- Card Shelf -->
+						<div class="card-shelf">
+			<div class="card-item card1-bg" id="card1" role="button" tabindex="0" aria-label="8MB Video Converter - Convert videos to GIF, AVIF, WebP, MP4 formats under 8MB">
+				<div class="new-badge">NEW</div>
+				<h3>8MB Video Converter</h3>
+				<p>Free 8MB video compressor & converter. Convert any video to 8MB - make videos smaller for Discord, email, social media.</p>
+			</div>
+			<div class="card-item card2-bg" id="card2" role="button" tabindex="0" aria-label="Clip that - Upload and trim videos with interactive timeline controls">
+				<div class="new-badge">NEW</div>
+				<h3>Clip That</h3>
+				<p>Upload a video and easily crop/trim it with our interactive timeline. Perfect for creating clips for social media.</p>
+			</div>
+			<div class="card-item card3-bg" role="button" tabindex="0" aria-label="Join our Discord community for support and updates">
+				<div class="new-badge"></div>
+				<h3>Join Our Community</h3>
+				<p>Get help with 8MB video conversion and connect with other users. <a href="https://discord.gg/NHnRRucW9S" target="_blank" class="discord-link" aria-label="Join our Discord server">Chat with us on <span class="ai-gradient discord-hover">Discord</span></a></p>
+			</div>
+		</div>
+
+	</div>
+	<script>
+	// Add click handler for card 1 to navigate to conversion page
+	document.getElementById('card1').addEventListener('click', function() {
+		window.location.href = '/8mb';
+	});
+
+	// Add click handler for card 2 to navigate to clip page
+	document.getElementById('card2').addEventListener('click', function() {
+		window.location.href = '/clip';
+	});
+
+	// Add click handler for card 3 to navigate to Discord
+	document.querySelector('.card3-bg').addEventListener('click', function() {
+		window.open('https://discord.gg/NHnRRucW9S', '_blank');
+	});
+	</script>
+
+</body>
+</html>

@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<!-- Primary Meta Tags -->
+	<title>8MB Video Compressor / Converter - Compress Any Video to 8MB for Discord & Social Media</title>
+	<meta name="title" content="8MB Video Compressor / Converter - Compress Any Video to 8MB for Discord & Social Media">
+	<meta name="description" content="8MB Free online video compressor. Convert any video to under 8MB for Discord, email, and social media. Fast, AI-powered compression with quality preservation.">
+	<meta name="keywords" content="8mb video converter, video compressor, discord video, compress video, 8mb converter, social media video, 8mb video, 8mb, discord, discord compressor">
+	<meta name="author" content="Telinquents">
+	<meta name="robots" content="index, follow">
+
+	<!-- Additional SEO Meta Tags -->
+	<meta name="theme-color" content="#007AFF">
+	<meta name="application-name" content="8MB Video Compressor/Converter">
+	<link rel="canonical" href="https://www.telinquents.com/8mb">
+
+	<!-- Favicon -->
+	<link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='favicon.jpg') }}">
+	<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.jpg') }}">
+	<link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.jpg') }}">
+
+	<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+	<!-- Structured Data (JSON-LD) -->
+	<script type="application/ld+json">
+	{
+		"@context": "https://schema.org",
+		"@type": "WebApplication",
+		"name": "8MB Video Converter",
+		"url": "https://www.telinquents.com/8mb",
+		"description": "8MB Free online video compressor. Convert any video to under 8MB for Discord, email, and social media. Fast, AI-powered compression with quality preservation.",
+		"applicationCategory": "MultimediaApplication",
+		"operatingSystem": "Web Browser",
+		"offers": {
+			"@type": "Offer",
+			"price": "0",
+			"priceCurrency": "USD"
+		},
+		"featureList": [
+			"Video compression to 8MB",
+			"Multiple output formats (GIF, AVIF, WebP, MP4, AV1)",
+			"AI-powered compression",
+			"Free to use",
+			"Discord optimized"
+		],
+		"author": {
+			"@type": "Organization",
+			"name": "Telinquents"
+		}
+	}
+	</script>
+</head>
+<body>
+	<div id="queue-counter" class="queue-counter">Queue: <span id="queue-count">0</span></div>
+	<div class="container">
+		<a href="/" class="back-button">← Back</a>
+		<h1>8MB Video Compressor And Converter</h1>
+		<p class="subtitle">Compress, convert & share easily — optimized for web and social.</p>
+
+		<div class="seo-content">
+			<h2>Compress Videos to 8MB for Discord & Social Media</h2>
+			<p>Convert any video to under 8MB instantly. Our AI-powered compressor maintains quality while ensuring compatibility with Discord, email, and social media platforms that have size limits.</p>
+
+			<p><strong>Key Features:</strong></p>
+			<ul>
+				<li>Free online compression - no registration required</li>
+				<li>Multiple formats: AVIF, WebP, MP4, AV1, GIF</li>
+				<li>Ultra-fast processing with cloud acceleration</li>
+				<li>Optimized for Discord's 8MB limit</li>
+				<li>Maintains video quality during compression</li>
+			</ul>
+
+			<p>Simply upload your video, choose your preferred format, and get a compressed file ready for sharing in seconds.</p>
+		</div>
+		{% with messages = get_flashed_messages() %}
+			{% if messages %}
+				<ul class="flash">
+					{% for message in messages %}
+						<li>{{ message }}</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+		{% endwith %}
+
+		<!-- Upload Area -->
+		<div class="upload-area" id="uploadArea">
+			<div class="upload-icon">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+					<path d="M7 14l5-5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+					<path d="M12 19V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+			</div>
+			<p class="upload-text">Drag & drop your video</p>
+			<p class="upload-subtext">or click to browse files</p>
+			<input id="video" name="video" type="file" accept="video/*" required hidden>
+		</div>
+
+		<!-- Settings and Output -->
+		<div class="settings-output-container">
+			<!-- Smart Settings -->
+			<div class="smart-settings">
+				<div class="settings-header">
+					<span>Includes</span>
+					<div class="info-icon">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+							<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+							<path d="M12 16v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+							<path d="M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+						</svg>
+					</div>
+				</div>
+				<div class="setting-item">
+					<span>Ultra fast encoding</span>
+					<div class="checkmark">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+							<path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+						</svg>
+					</div>
+				</div>
+				<div class="setting-item">
+					<span>≤ 8 MB output</span>
+					<div class="checkmark">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+							<path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+						</svg>
+					</div>
+				</div>
+				<div class="setting-item">
+					<span>≥ 12 fps</span>
+					<div class="checkmark">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+							<path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+						</svg>
+					</div>
+				</div>
+				<div class="setting-item">
+					<span>Social media ready</span>
+					<div class="checkmark">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+							<path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+						</svg>
+					</div>
+				</div>
+			</div>
+
+			<!-- Output Section -->
+			<div class="output-section">
+				<h3>Output</h3>
+				<div class="output-field">
+					<label for="format">Format</label>
+					<select id="format" name="format">
+						<option value="av1" selected>AV1 (best quality, includes sound)</option>
+						<option value="avif">AVIF (best quality)</option>
+						<option value="mp4">MP4 (good quality, includes sound)</option>
+						<option value="webp">WebP (good quality)</option>
+						<option value="gif">GIF (maximum compatibility)</option>
+					</select>
+				</div>
+				<div class="output-field">
+					<label for="filename">Filename</label>
+					<div class="filename-input-wrapper">
+						<input type="text" id="filename" name="filename" value="output" style="flex: 1; padding-right: 50px;">
+						<span class="file-extension" id="fileExtension">.mp4</span>
+					</div>
+				</div>
+				<div class="output-note">
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+						<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+						<path d="M12 16v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+						<path d="M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+					</svg>
+					<span>Large files may take extra time.</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Action Buttons -->
+		<form id="uploadForm" class="action-form">
+			<button type="submit" id="submitBtn" class="convert-button">Convert Video</button>
+			<button type="button" id="resetBtn" class="reset-button">Reset</button>
+		</form>
+
+		<div id="progress" class="progress-box center" style="display:none;"></div>
+		<div id="result" style="display:none; margin-top: 16px;"></div>
+
+	</div>
+
+	<!-- AVIF Discord Warning Footer Banner -->
+	<div id="avif-discord-banner" class="discord-warning-footer">
+		<div class="warning-icon">
+			<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+				<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+			</svg>
+		</div>
+		<div class="warning-content">
+			<strong>Discord Limit:</strong> AVIF files longer than 60 seconds may not play properly on Discord. Consider using MP4 or GIF for longer videos, or use <a href="https://telinquents.com/clip" target="_blank" style="color: #856404; text-decoration: underline;">Clip That</a> to trim your video.
+		</div>
+	</div>
+
+	<!-- Main Application Module -->
+	<script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+	<!-- Google Analytics -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=YOUR_GA_MEASUREMENT_ID"></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag(){dataLayer.push(arguments);}
+		gtag('js', new Date());
+		gtag('config', 'YOUR_GA_MEASUREMENT_ID');
+
+		// Track conversion events
+		document.addEventListener('DOMContentLoaded', function() {
+			document.getElementById('format')?.addEventListener('change', function() {
+				gtag('event', 'format_selection', {
+					'event_category': 'conversion',
+					'event_label': this.value,
+					'value': this.value
+				});
+			});
+
+			// Track successful uploads
+			document.getElementById('submitBtn')?.addEventListener('click', function() {
+				gtag('event', 'conversion_start', {
+					'event_category': 'conversion',
+					'event_label': 'upload_attempt'
+				});
+			});
+
+			// Track completed conversions
+			window.addEventListener('conversion_complete', function(e) {
+				gtag('event', 'conversion_complete', {
+					'event_category': 'conversion',
+					'event_label': e.detail?.format || 'unknown',
+					'value': e.detail?.size || 0
+				});
+			});
+		});
+	</script>
+</body>
+</html>

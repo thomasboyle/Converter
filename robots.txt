@@ -1,0 +1,36 @@
+User-agent: *
+Allow: /
+Disallow: /gifs/
+Disallow: /images/
+Disallow: /uploads/
+Disallow: /queue
+Disallow: /progress/
+Disallow: /start
+
+# Allow crawling of main pages
+Allow: /$
+Allow: /8mb$
+Allow: /clip$
+
+# Sitemap
+Sitemap: https://telinquents.com/sitemap.xml
+# Note: Update this URL if the domain changes. Consider using environment variable for dynamic configuration.
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1
+
+# Block access to temporary files and processing endpoints
+Disallow: /tmp/
+Disallow: /*.tmp$
+Disallow: /*.temp$
+
+# Allow access to CSS, JS, and image files
+Allow: /static/
+Allow: *.css$
+Allow: *.js$
+Allow: *.png$
+Allow: *.jpg$
+Allow: *.jpeg$
+Allow: *.gif$
+Allow: *.ico$
+Allow: *.svg$

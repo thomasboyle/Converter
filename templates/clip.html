@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Clip That - Video Trimming Tool | Free Online Video Cropper | Telinquents</title>
+	<meta name="description" content="Clip that - Free online video trimmer. Upload and crop videos easily with interactive timeline controls. Perfect for creating social media clips.">
+	<meta name="keywords" content="clip video, trim video, crop video, video trimmer, online video cropper, video clipper, video editor, social media clips, free video trimmer">
+	<meta name="author" content="Telinquents">
+	<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+	<meta property="og:type" content="website">
+	<meta property="og:url" content="https://www.telinquents.com/clip">
+	<meta property="og:title" content="Clip that - Video Trimming Tool | Free Online Video Cropper">
+	<meta property="og:description" content="Clip that - Free online video trimmer. Upload and crop videos easily with interactive timeline controls. Perfect for creating social media clips.">
+	<meta property="og:image" content="https://telinquents.com/images/card1.jpg">
+	<meta property="og:site_name" content="Telinquents Clip Tool">
+	<meta property="twitter:card" content="summary_large_image">
+	<meta property="twitter:url" content="https://www.telinquents.com/clip">
+	<meta property="twitter:title" content="Clip that - Video Trimming Tool | Free Online Video Cropper">
+	<meta property="twitter:description" content="Clip that - Free online video trimmer. Upload and crop videos easily with interactive timeline controls. Perfect for creating social media clips.">
+	<meta property="twitter:image" content="https://telinquents.com/images/card1.jpg">
+	<meta name="theme-color" content="#007AFF">
+	<link rel="canonical" href="https://www.telinquents.com/clip">
+	<link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='favicon.jpg') }}">
+	<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+	<script type="application/ld+json">
+	{
+		"@context": "https://schema.org",
+		"@graph": [{
+			"@type": "WebApplication",
+			"name": "Clip that Video Trimmer",
+			"url": "https://www.telinquents.com/clip",
+			"description": "Free online video trimmer with interactive timeline controls",
+			"applicationCategory": "MultimediaApplication",
+			"operatingSystem": "Web Browser",
+			"offers": {
+				"@type": "Offer",
+				"price": "0",
+				"priceCurrency": "USD",
+				"availability": "InStock"
+			},
+			"featureList": ["Interactive timeline controls", "Real-time video preview", "Precise trimming", "Social media optimized"],
+			"author": {
+				"@type": "Organization",
+				"name": "Telinquents",
+				"url": "https://www.telinquents.com"
+			}
+		}]
+	}
+	</script>
+</head>
+<body>
+	<div class="container">
+		<a href="/" class="back-button">← Back to Home</a>
+
+		<header>
+			<h1>Clip That</h1>
+			<p class="subtitle">Trim your videos with precision using our interactive timeline</p>
+		</header>
+
+
+		<div class="upload-section">
+			<div class="upload-area" id="uploadArea">
+				<div class="upload-icon">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+						<path d="M7 14l5-5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+						<path d="M12 19V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+					</svg>
+				</div>
+				<p class="upload-text">Drag & drop your video</p>
+				<p class="upload-subtext">or click to browse files</p>
+				<input id="videoInput" name="video" type="file" accept="video/*" required hidden>
+			</div>
+		</div>
+
+		<!-- Video Preview Section -->
+		<div class="video-preview-section" id="videoPreviewSection" style="display: none;">
+			<div class="video-container">
+				<video id="previewVideo" style="width: 100%; max-width: 600px; border-radius: 12px;">
+					Your browser does not support the video tag.
+				</video>
+			</div>
+
+
+			<div class="timeline-controls">
+				<div class="timeline-header">
+					<h4>Trim Timeline</h4>
+					<div class="time-info">
+						<span id="currentTime">0:00</span> / <span id="totalTime">0:00</span>
+					</div>
+				</div>
+
+				<div class="timeline-container">
+					<div class="timeline-track" id="timelineTrack">
+						<div class="timeline-progress" id="timelineProgress"></div>
+						<div class="timeline-range">
+							<div class="range-handle range-handle-start" id="rangeHandleStart"></div>
+							<div class="range-selection" id="rangeSelection"></div>
+							<div class="range-handle range-handle-end" id="rangeHandleEnd"></div>
+						</div>
+						<div class="timeline-scrubber" id="timelineScrubber" style="display: none;">
+							<div class="scrubber-line"></div>
+							<div class="scrubber-handle"></div>
+						</div>
+					</div>
+				</div>
+
+				<div class="time-inputs">
+					<div class="time-item">
+						<p class="time-label">Start</p>
+						<p class="time-value" id="startTime">0:00</p>
+					</div>
+					<div class="time-item">
+						<p class="time-label">End</p>
+						<p class="time-value" id="endTime">0:00</p>
+					</div>
+					<div class="time-item">
+						<p class="time-label">Length</p>
+						<p class="time-value" id="clipDuration">0:00</p>
+					</div>
+				</div>
+
+
+				<div class="play-controls">
+					<button type="button" id="playPauseBtn" class="control-button">
+						<svg id="playIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+							<path d="M8 5v14l11-7z"/>
+						</svg>
+						<svg id="pauseIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+							<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+						</svg>
+						<span>Play</span>
+					</button>
+				</div>
+			</div>
+		</div>
+
+
+		<div class="action-section" id="actionSection" style="display: none;">
+			<form id="clipForm" action="/clip/start" method="post" class="action-form">
+				<button type="submit" id="clipButton" class="convert-button">Clip that!</button>
+				<button type="button" id="resetButton" class="reset-button">Reset</button>
+			</form>
+
+			<div id="progress" class="progress-box center" style="display:none;"></div>
+			<div id="result" style="display:none; margin-top: 16px;"></div>
+		</div>
+
+		<p class="demo-note">No file leaves your browser in this demo.</p>
+	</div>
+
+	<script>
+
+		let videoFile = null;
+		let videoDuration = 0;
+		let startTime = 0;
+		let endTime = 0;
+		let isDragging = false;
+		let activeHandle = null;
+		let lastMovedHandle = null;
+		let currentJobId = null;
+		let currentVideoURL = null;
+		let browserVideoSupport = null;
+
+
+		const uploadArea = document.getElementById('uploadArea');
+		const videoInput = document.getElementById('videoInput');
+		const videoPreviewSection = document.getElementById('videoPreviewSection');
+		const actionSection = document.getElementById('actionSection');
+		const previewVideo = document.getElementById('previewVideo');
+		const timelineProgress = document.getElementById('timelineProgress');
+		const rangeSelection = document.getElementById('rangeSelection');
+		const rangeHandleStart = document.getElementById('rangeHandleStart');
+		const rangeHandleEnd = document.getElementById('rangeHandleEnd');
+		const currentTimeEl = document.getElementById('currentTime');
+		const totalTimeEl = document.getElementById('totalTime');
+		const startTimeEl = document.getElementById('startTime');
+		const endTimeEl = document.getElementById('endTime');
+		const clipDurationEl = document.getElementById('clipDuration');
+		const clipForm = document.getElementById('clipForm');
+		const clipButton = document.getElementById('clipButton');
+		const resetButton = document.getElementById('resetButton');
+		const playPauseBtn = document.getElementById('playPauseBtn');
+		const playIcon = document.getElementById('playIcon');
+		const pauseIcon = document.getElementById('pauseIcon');
+		const timelineTrack = document.getElementById('timelineTrack');
+		const timelineScrubber = document.getElementById('timelineScrubber');
+		const progressBox = document.getElementById('progress');
+		const resultBox = document.getElementById('result');
+
+
+
+
+		function formatTime(seconds) {
+			const mins = Math.floor(seconds / 60);
+			const secs = Math.floor(seconds % 60);
+			return `${mins}:${secs.toString().padStart(2, '0')}`;
+		}
+
+		function parseTime(timeStr) {
+			const [mins, secs] = timeStr.split(':').map(Number);
+			return mins * 60 + secs;
+		}
+
+		function detectBrowserVideoSupport() {
+			if (browserVideoSupport) return browserVideoSupport;
+			const video = document.createElement('video');
+			const codecs = {
+				'video/mp4; codecs="avc1.42E01E"': 'MP4 (H.264)',
+				'video/mp4; codecs="hvc1"': 'MP4 (H.265)',
+				'video/quicktime; codecs="avc1.42E01E"': 'MOV (H.264)',
+				'video/webm; codecs="vp9"': 'WebM (VP9)',
+				'video/webm; codecs="vp8"': 'WebM (VP8)'
+			};
+			const formats = Object.keys(codecs).filter(codec => video.canPlayType(codec) !== '');
+			browserVideoSupport = formats.length > 0 ? formats.map(f => codecs[f]) : ['MP4 (H.264)'];
+			return browserVideoSupport;
+		}
+
+		function updateTimeDisplay() {
+			currentTimeEl.textContent = formatTime(previewVideo.currentTime);
+			startTimeEl.textContent = formatTime(startTime);
+			endTimeEl.textContent = formatTime(endTime);
+			clipDurationEl.textContent = formatTime(endTime - startTime);
+		}
+
+		function updateTimeline() {
+			const startPercent = (startTime / videoDuration) * 100;
+			const endPercent = (endTime / videoDuration) * 100;
+			const rangeWidth = endPercent - startPercent;
+
+			let progressPercent = 0;
+			if (rangeWidth > 0) {
+				const progressInRange = previewVideo.currentTime - startTime;
+				const rangeDuration = endTime - startTime;
+				progressPercent = (progressInRange / rangeDuration) * rangeWidth;
+			}
+			timelineProgress.style.width = `${progressPercent}%`;
+			timelineProgress.style.left = `${startPercent}%`;
+
+
+			rangeSelection.style.left = `${startPercent}%`;
+			rangeSelection.style.width = `${rangeWidth}%`;
+
+
+			rangeHandleStart.style.left = `${startPercent}%`;
+			rangeHandleEnd.style.left = `${endPercent}%`;
+		}
+
+
+
+
+		function showVideoError(message, isWarning = false) {
+			let errorDiv = document.getElementById('video-error-message');
+			if (!errorDiv) {
+				errorDiv = document.createElement('div');
+				errorDiv.id = 'video-error-message';
+				errorDiv.style.cssText = `
+					position: fixed;
+					bottom: 20px;
+					right: 20px;
+					left: 20px;
+					z-index: 1000;
+					padding: 12px 16px;
+					border-radius: 8px;
+					font-weight: 500;
+					text-align: center;
+					box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+				`;
+				document.body.appendChild(errorDiv);
+			}
+
+			errorDiv.style.backgroundColor = isWarning ? '#fff3cd' : '#f8d7da';
+			errorDiv.style.color = isWarning ? '#856404' : '#721c24';
+			errorDiv.style.border = `1px solid ${isWarning ? '#ffeaa7' : '#f5c6cb'}`;
+			errorDiv.textContent = message;
+		}
+
+		function cleanupVideoResources() {
+			if (currentVideoURL) {
+				URL.revokeObjectURL(currentVideoURL);
+				currentVideoURL = null;
+			}
+			previewVideo.src = '';
+			previewVideo.load();
+		}
+
+		function resetUploadArea() {
+			uploadArea.querySelector('.upload-text').textContent = 'Drag & drop your video';
+			uploadArea.querySelector('.upload-subtext').textContent = 'or click to browse files';
+			uploadArea.style.borderColor = '#d2d2d7';
+			uploadArea.style.backgroundColor = '#fafafa';
+		}
+
+		function validateVideoFile(file) {
+			const maxSize = 2 * 1024 * 1024 * 1024; // 2GB limit
+			const supportedTypes = [
+				'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska',
+				'video/webm', 'video/mpeg', 'video/mp2t', 'video/3gpp', 'video/x-ms-wmv'
+			];
+
+			if (file.size > maxSize) {
+				throw new Error(`File size (${(file.size / (1024 * 1024 * 1024)).toFixed(1)}GB) exceeds maximum limit of 2GB`);
+			}
+
+			if (file.size === 0) {
+				throw new Error('File appears to be empty');
+			}
+
+			if (!supportedTypes.includes(file.type) && !file.type.startsWith('video/')) {
+				throw new Error('Unsupported file type. Please use MP4, MOV, AVI, MKV, WebM, or other common video formats');
+			}
+
+			return true;
+		}
+
+		async function tryLoadVideo(file, videoURL) {
+			return new Promise((resolve, reject) => {
+				const timeout = setTimeout(() => {
+					reject(new Error('Video loading timed out after 30 seconds'));
+				}, 30000);
+
+				previewVideo.onloadedmetadata = function() {
+					clearTimeout(timeout);
+					resolve();
+				};
+
+				previewVideo.onerror = function(e) {
+					clearTimeout(timeout);
+					reject(new Error('Browser cannot play this video format'));
+				};
+
+				previewVideo.oncanplay = function() {
+					clearTimeout(timeout);
+					resolve();
+				};
+
+				previewVideo.src = videoURL;
+			});
+		}
+
+		async function handleFileSelect(file) {
+			cleanupVideoResources();
+
+			const existingError = document.getElementById('video-error-message');
+			if (existingError) {
+				existingError.parentNode.removeChild(existingError);
+			}
+
+			try {
+				validateVideoFile(file);
+
+				videoFile = file;
+				currentVideoURL = URL.createObjectURL(file);
+
+				uploadArea.querySelector('.upload-text').textContent = 'Loading video...';
+				uploadArea.querySelector('.upload-subtext').textContent = 'Please wait while we analyze your file';
+
+				await tryLoadVideo(file, currentVideoURL);
+
+				videoDuration = previewVideo.duration;
+				endTime = videoDuration;
+				totalTimeEl.textContent = formatTime(videoDuration);
+				updateTimeDisplay();
+				updateTimeline();
+
+				videoPreviewSection.style.display = 'block';
+				actionSection.style.display = 'block';
+
+				uploadArea.querySelector('.upload-text').textContent = file.name;
+				uploadArea.querySelector('.upload-subtext').textContent = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+				uploadArea.style.borderColor = '#34c759';
+				uploadArea.style.backgroundColor = '#f0fff4';
+
+			} catch (error) {
+				console.error('Video loading error:', error);
+				cleanupVideoResources();
+				resetUploadArea();
+				videoFile = null;
+
+				let errorMessage = error.message;
+				const fileExt = file.name.toLowerCase().split('.').pop();
+
+				if (error.message.includes('cannot play this video format')) {
+					const formats = detectBrowserVideoSupport();
+					errorMessage = fileExt === 'mov'
+						? `MOV format not supported. Try converting to MP4. Supported: ${formats.join(', ')}. File: ${file.name}`
+						: `Format not supported. Try: ${formats.join(', ')}. File: ${file.name}`;
+				} else if (error.message.includes('timed out')) {
+					errorMessage = `Loading timed out. Try a smaller file or different format.`;
+				}
+
+				showVideoError(errorMessage);
+			}
+		}
+
+		uploadArea.addEventListener('click', () => {
+			videoInput.click();
+		});
+
+		videoInput.addEventListener('change', async (e) => {
+			if (e.target.files.length > 0) {
+				const file = e.target.files[0];
+				await handleFileSelect(file);
+			}
+		});
+
+		uploadArea.addEventListener('dragover', (e) => {
+			e.preventDefault();
+			uploadArea.classList.add('dragover');
+		});
+
+		uploadArea.addEventListener('dragleave', (e) => {
+			e.preventDefault();
+			uploadArea.classList.remove('dragover');
+		});
+
+		uploadArea.addEventListener('drop', async (e) => {
+			e.preventDefault();
+			uploadArea.classList.remove('dragover');
+
+			const files = e.dataTransfer.files;
+
+			if (files.length > 0 && files[0].type.startsWith('video/')) {
+				videoInput.files = files;
+				const file = files[0];
+				await handleFileSelect(file);
+			}
+		});
+
+		previewVideo.addEventListener('timeupdate', function() {
+			enforceTimeBoundaries();
+			updateTimeDisplay();
+			updateTimeline();
+		});
+
+		previewVideo.addEventListener('loadedmetadata', function() {
+			updateTimeline();
+		});
+
+		['play', 'pause', 'ended'].forEach(event => {
+			previewVideo.addEventListener(event, updatePlayPauseButton);
+		});
+
+		previewVideo.addEventListener('click', function(e) {
+			if (previewVideo.paused && previewVideo.currentTime >= endTime) {
+				e.preventDefault();
+				previewVideo.currentTime = startTime;
+				previewVideo.play().catch(console.error);
+			}
+		});
+
+		previewVideo.addEventListener('seeking', function() {
+			if (previewVideo.currentTime < startTime) previewVideo.currentTime = startTime;
+			else if (previewVideo.currentTime > endTime) previewVideo.currentTime = endTime;
+		});
+
+		previewVideo.addEventListener('seeked', enforceTimeBoundaries);
+
+		function enforceTimeBoundaries() {
+			if (previewVideo.seeking) return;
+			if (previewVideo.currentTime < startTime) previewVideo.currentTime = startTime;
+			else if (previewVideo.currentTime > endTime) {
+				previewVideo.currentTime = endTime;
+				if (!previewVideo.paused && !previewVideo.ended) previewVideo.pause();
+			}
+		}
+
+		function getTimelinePosition(e) {
+			const rect = e.currentTarget.getBoundingClientRect();
+			const x = e.clientX - rect.left;
+			const percent = x / rect.width;
+			return Math.max(0, Math.min(1, percent)) * videoDuration;
+		}
+
+		function updateScrubberPosition(e) {
+			if (isDragging) return;
+			const rect = timelineTrack.getBoundingClientRect();
+			const x = e.clientX - rect.left;
+			const percent = Math.max(0, Math.min(1, x / rect.width));
+			const hoverTime = percent * videoDuration;
+			timelineScrubber.style.display = (hoverTime >= startTime && hoverTime <= endTime) ? 'block' : 'none';
+			if (timelineScrubber.style.display === 'block') timelineScrubber.style.left = `${percent * 100}%`;
+		}
+
+		timelineTrack.addEventListener('mousemove', updateScrubberPosition);
+		timelineTrack.addEventListener('mouseenter', updateScrubberPosition);
+		timelineTrack.addEventListener('mouseleave', () => timelineScrubber.style.display = 'none');
+
+
+		timelineTrack.addEventListener('click', function(e) {
+			if (isDragging) return;
+			const seekTime = getTimelinePosition(e);
+			if (seekTime >= startTime && seekTime <= endTime) {
+				previewVideo.currentTime = seekTime;
+				lastMovedHandle = null;
+			}
+		});
+
+
+		[rangeHandleStart, rangeHandleEnd].forEach((handle, index) => {
+			handle.addEventListener('mousedown', function(e) {
+				isDragging = true;
+				activeHandle = index === 0 ? 'start' : 'end';
+				e.preventDefault();
+			});
+		});
+
+		document.addEventListener('mousemove', function(e) {
+			if (!isDragging || !activeHandle) return;
+			const rect = timelineTrack.getBoundingClientRect();
+			const x = e.clientX - rect.left;
+			const percent = Math.max(0, Math.min(1, x / rect.width));
+			const newTime = percent * videoDuration;
+
+			if (activeHandle === 'start') {
+				startTime = Math.min(newTime, endTime - 1);
+				previewVideo.currentTime = startTime;
+				lastMovedHandle = 'start';
+			} else {
+				endTime = Math.max(newTime, startTime + 1);
+				previewVideo.currentTime = endTime;
+				lastMovedHandle = 'end';
+			}
+			updateTimeline();
+			updateTimeDisplay();
+		});
+
+		document.addEventListener('mouseup', function() {
+			if (isDragging && activeHandle) {
+				previewVideo.currentTime = activeHandle === 'start' ? startTime : endTime;
+				lastMovedHandle = activeHandle;
+				updateTimeline();
+				updateTimeDisplay();
+			}
+			isDragging = false;
+			activeHandle = null;
+		});
+
+
+		function updatePlayPauseButton() {
+			if (previewVideo.paused || previewVideo.ended) {
+				playIcon.style.display = 'inline';
+				pauseIcon.style.display = 'none';
+				playPauseBtn.querySelector('span').textContent = 'Play';
+			} else {
+				playIcon.style.display = 'none';
+				pauseIcon.style.display = 'inline';
+				playPauseBtn.querySelector('span').textContent = 'Pause';
+			}
+		}
+
+
+		function togglePlayPause() {
+			if (previewVideo.paused || previewVideo.ended) {
+				if (previewVideo.currentTime >= endTime) {
+					previewVideo.currentTime = startTime;
+				}
+				setTimeout(() => previewVideo.play().catch(console.error), 10);
+			} else {
+				previewVideo.pause();
+			}
+		}
+
+		playPauseBtn.addEventListener('click', togglePlayPause);
+		document.addEventListener('keydown', function(e) {
+			if (e.code === 'Space' && videoFile) {
+				e.preventDefault();
+				togglePlayPause();
+			}
+		});
+
+
+
+		clipForm.addEventListener('submit', function(e) {
+			e.preventDefault();
+			if (!videoFile) return alert('Please select a video file first.');
+			if (endTime - startTime < 1) return alert('Please select at least 1 second of video to clip.');
+
+			progressBox.style.display = 'block';
+			progressBox.innerHTML = '<div class="loading-container"><div class="loader"></div><p class="loading-text">Processing your clip...</p></div>';
+
+			const formData = new FormData();
+			formData.append('video', videoFile);
+			formData.append('start_time', startTime.toString());
+			formData.append('end_time', endTime.toString());
+
+			fetch('/clip/start', { method: 'POST', body: formData })
+			.then(response => response.json())
+			.then(data => data.job_id ? pollProgress(data.job_id) : Promise.reject(new Error(data.error || 'Failed to start clipping')))
+			.catch(error => progressBox.innerHTML = `<div style="text-align: center; color: #dc3545; font-weight: bold;">❌ ${error.message}</div>`);
+		});
+
+		function pollProgress(jobId) {
+			const checkProgress = () => {
+				fetch(`/clip/progress/${jobId}`)
+				.then(response => response.json())
+				.then(data => {
+					if (data.status === 'done') {
+						progressBox.style.display = 'none';
+						currentJobId = jobId;
+						showResult(data);
+					} else if (data.status === 'error') {
+						progressBox.innerHTML = `<div style="text-align: center; color: #dc3545; font-weight: bold;">❌ ${data.message}</div>`;
+					} else {
+						progressBox.innerHTML = `<div class="loading-container"><div class="loader"></div><p class="loading-text">${data.message || 'Processing...'}</p></div>`;
+						setTimeout(checkProgress, 1000);
+					}
+				})
+				.catch(error => progressBox.innerHTML = `<div style="text-align: center; color: #dc3545; font-weight: bold;">❌ ${error.message}</div>`);
+			};
+			checkProgress();
+		}
+
+		function showResult(data) {
+			resultBox.style.display = 'block';
+			resultBox.innerHTML = `
+				<div class="result-container">
+					<div class="success-message">✅ Your video has been clipped successfully!</div>
+					<div class="video-result">
+						<video controls style="width: 100%; max-width: 400px; border-radius: 12px;">
+							<source src="${data.video_url}" type="video/mp4">
+							Your browser does not support the video tag.
+						</video>
+					</div>
+					<div class="action-buttons">
+						<a href="${data.video_url}" download class="download-button-green">Download Video</a>
+						<button type="button" id="clipAnotherButton" class="convert-button">Clip Another</button>
+					</div>
+					<div class="result-info">
+						<p><strong>Original Duration:</strong> ${formatTime(videoDuration)}</p>
+						<p><strong>Clipped Duration:</strong> ${formatTime(endTime - startTime)}</p>
+						<p><strong>Trimmed from:</strong> ${formatTime(startTime)} to ${formatTime(endTime)}</p>
+					</div>
+				</div>
+			`;
+
+			setTimeout(() => {
+				videoPreviewSection.style.display = 'none';
+				clipForm.style.display = 'none';
+			}, 150);
+		}
+
+		function resetForm() {
+			cleanupVideoResources();
+
+			videoFile = null;
+			videoDuration = 0;
+			startTime = 0;
+			endTime = 0;
+			isDragging = false;
+			activeHandle = null;
+			lastMovedHandle = null;
+
+			videoInput.value = '';
+
+			resetUploadArea();
+
+			videoPreviewSection.style.display = 'none';
+			actionSection.style.display = 'none';
+			progressBox.style.display = 'none';
+			resultBox.style.display = 'none';
+			uploadArea.classList.remove('dragover');
+
+			const existingError = document.getElementById('video-error-message');
+			if (existingError) {
+				existingError.parentNode.removeChild(existingError);
+			}
+
+			timelineProgress.style.width = '0%';
+			rangeSelection.style.left = '0%';
+			rangeSelection.style.width = '100%';
+			currentTimeEl.textContent = '0:00';
+			totalTimeEl.textContent = '0:00';
+			startTimeEl.textContent = '0:00';
+			endTimeEl.textContent = '0:00';
+			clipDurationEl.textContent = '0:00';
+		}
+
+		resetButton.addEventListener('click', resetForm);
+
+		async function clipAnother() {
+			if (currentJobId) {
+				try {
+					const response = await fetch(`/clip/clear_cache/${currentJobId}`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						}
+					});
+
+					if (!response.ok) {
+						console.warn('Failed to clear cache, but continuing with UI reset');
+					} else {
+						const result = await response.json();
+						console.log('Cache cleared:', result.message);
+					}
+				} catch (error) {
+					console.warn('Error clearing cache:', error);
+				} finally {
+					currentJobId = null;
+				}
+			}
+
+			resetForm();
+		}
+
+		document.addEventListener('click', function(e) {
+			if (e.target && e.target.id === 'clipAnotherButton') {
+				clipAnother();
+			}
+		});
+
+		updateTimeDisplay();
+
+		window.addEventListener('load', function() {
+			setTimeout(() => {
+				const recommendedFormats = detectBrowserVideoSupport();
+				const supportMessage = `Your browser supports: ${recommendedFormats.join(', ')}. For best compatibility, use MP4 with H.264 codec.`;
+				showVideoError(supportMessage, true);
+
+
+			}, 1000);
+		});
+	</script>
+
+
+	<script async src="https://www.googletagmanager.com/gtag/js?id=YOUR_GA_MEASUREMENT_ID"></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag(){dataLayer.push(arguments);}
+		gtag('js', new Date());
+		gtag('config', 'YOUR_GA_MEASUREMENT_ID');
+
+		gtag('event', 'clip_page_view', {
+			'event_category': 'engagement',
+			'event_label': 'clip_tool_access'
+		});
+	</script>
+</body>
+</html>
