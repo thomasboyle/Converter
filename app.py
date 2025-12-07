@@ -228,10 +228,11 @@ def create_app() -> Flask:
                 MAX_GIF_BYTES,
                 progress_cb=_make_progress_callback(job_id),
             )
+            cache_buster = int(time.time() * 1000)
             _update_job_status(job_id, {
                 "status": "done",
                 "message": "Conversion complete",
-                "gif_url": f"/gifs/{output_path.name}",
+                "gif_url": f"/gifs/{output_path.name}?v={cache_buster}",
                 "format": fmt,
                 "params": params
             })
@@ -285,10 +286,11 @@ def create_app() -> Flask:
                     progress_cb=progress_cb,
                 )
 
+            cache_buster = int(time.time() * 1000)
             _update_job_status(job_id, {
                 "status": "done",
                 "message": "Clipping complete",
-                "video_url": f"/gifs/{output_path.name}",
+                "video_url": f"/gifs/{output_path.name}?v={cache_buster}",
                 "params": params
             })
         except (ClipConversionError, Exception) as exc:
@@ -439,7 +441,7 @@ def create_app() -> Flask:
         if job and job_url_key:
             url = job.get(job_url_key)
             if url:
-                filename = url.replace("/gifs/", "")
+                filename = url.replace("/gifs/", "").split('?', 1)[0]
                 return directory / filename
         
         for file_path in directory.iterdir():
@@ -492,7 +494,12 @@ def create_app() -> Flask:
 
     @app.route('/gifs/<path:filename>')
     def get_gif(filename: str):
-        return send_from_directory(str(OUTPUT_DIR), filename, as_attachment=False)
+        response = send_from_directory(str(OUTPUT_DIR), filename, as_attachment=False)
+        # Allow long-lived caching; freshness handled via URL versioning
+        response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+        response.headers.pop('Pragma', None)
+        response.headers.pop('Expires', None)
+        return response
 
     @app.route('/images/<path:filename>')
     def get_image(filename: str):
