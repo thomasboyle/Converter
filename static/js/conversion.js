@@ -1,363 +1,247 @@
-// Conversion job management and polling
 import { Utils } from './utils.js';
 import { StorageManager } from './storage.js';
 
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
 export class ConversionManager {
-    constructor(uiManager) {
-        this.uiManager = uiManager;
+    constructor(ui) {
+        this.ui = ui;
+        this.el = ui.elements;
     }
 
-    // Reusable polling function for job status with enhanced mobile optimizations
-    async pollJobStatus(jobId, format, isResume = false) {
-        const baseInterval = Utils.isMobile ? 5000 : 1500; // Increased mobile interval to reduce load
-        let pollInterval = baseInterval;
-        let consecutiveErrors = 0;
-        const maxErrors = Utils.isMobile ? 3 : 5; // Fewer retries on mobile
-        let currentStatus = null;
+    async pollJobStatus(jobId, fmt, isResume = false) {
+        const isMob = Utils.isMobile;
+        const baseInt = isMob ? 5000 : 1500;
+        const maxErrs = isMob ? 3 : 5;
+        let interval = baseInt;
+        let errs = 0;
+        let lastSt = null;
 
-        const poll = async () => {
-            if (!this.uiManager.pageVisible) {
-                setTimeout(poll, pollInterval);
-                return;
+        while (true) {
+            if (!this.ui.pageVisible) {
+                await wait(interval);
+                continue;
             }
 
             try {
-                const response = await Utils.fetchWithTimeout(`/progress/${jobId}`, {
+                const res = await Utils.fetchWithTimeout(`/progress/${jobId}`, {
                     headers: { 'Cache-Control': 'no-cache' }
-                }, Utils.isMobile ? 20000 : 15000);
+                }, isMob ? 2e4 : 15e3);
 
-                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                const data = await response.json();
+                if (!res.ok) throw new Error(res.statusText);
+                const data = await res.json();
 
-                // Reset error count on successful response
-                consecutiveErrors = 0;
-                pollInterval = baseInterval;
+                errs = 0;
+                interval = baseInt;
 
-                // Only update DOM if status changed
-                if (currentStatus !== data.status || data.status === 'running') {
-                    this.updateProgressDisplay(data, currentStatus);
+                const st = data.status;
+                if (lastSt !== st || st === 'running') {
+                    this._updateProg(data, lastSt);
                 }
+                lastSt = st;
 
-                currentStatus = data.status;
+                if (st === 'done') return this._complete(data, fmt);
+                if (st === 'error' || st === 'cancelled') return this._err(data);
 
-                if (data.status === 'done') {
-                    this.handleJobComplete(data, format);
-                    return;
-                } else if (data.status === 'error' || data.status === 'cancelled') {
-                    this.handleJobError(data);
-                    return;
-                }
             } catch (e) {
-                consecutiveErrors++;
-                console.warn(`Job polling error (${consecutiveErrors}/${maxErrors}):`, e.message);
+                errs++;
+                console.warn(`Poll err ${errs}/${maxErrs}:`, e.message);
+                interval = Math.min(interval * 1.5, 3e4);
 
-                // Exponential backoff on errors
-                pollInterval = Math.min(pollInterval * 1.5, 30000); // Cap at 30 seconds
-
-                if (consecutiveErrors >= maxErrors) {
-                    this.handleConnectionLost();
-                    return;
-                }
-
-                // Show user-friendly error messages for first few errors
-                this.showRetryMessage(consecutiveErrors, currentStatus);
+                if (errs >= maxErrs) return this._connLost();
+                this._retryMsg(errs, lastSt);
             }
-            setTimeout(poll, pollInterval);
-        };
-        poll();
+            await wait(interval);
+        }
     }
 
-    // Update progress display based on job status
-    updateProgressDisplay(data, currentStatus) {
-        if (data.status === 'queued' && currentStatus !== 'queued') {
-            this.uiManager.elements.progressBox.innerHTML = Utils.createLoadingContainer('Queued...');
-        } else if (data.status === 'running') {
-            const text = data.message || 'Processing...';
-            const existingText = this.uiManager.elements.progressBox.querySelector('.loading-text');
-
-            if (currentStatus !== 'running' || !existingText) {
-                this.uiManager.elements.progressBox.innerHTML = Utils.createLoadingContainer(text);
-            } else if (existingText.textContent !== text) {
-                existingText.textContent = text;
+    _updateProg(data, lastSt) {
+        const box = this.el.progressBox;
+        const st = data.status;
+        if (st === 'queued' && lastSt !== 'queued') {
+            box.innerHTML = Utils.createLoadingContainer('Queued...');
+        } else if (st === 'running') {
+            const txt = data.message || 'Processing...';
+            const exist = box.querySelector('.loading-text');
+            if (lastSt !== 'running' || !exist) {
+                box.innerHTML = Utils.createLoadingContainer(txt);
+            } else if (exist.textContent !== txt) {
+                exist.textContent = txt;
             }
         }
     }
 
-    // Handle job completion
-    handleJobComplete(data, format) {
+    _complete(data, fmt) {
         StorageManager.clearActiveJob();
-        this.uiManager.elements.progressBox.innerHTML = Utils.createSuccessMessage('Done!');
+        this.el.progressBox.innerHTML = Utils.createSuccessMessage('Done!');
 
-        const fmt = (data.format || format).toLowerCase();
-        const fmtLabel = Utils.getFormatLabel(fmt);
-        const details = data.params ? ` (fps ${data.params.fps}, ${data.params.width}×${data.params.height}, ${data.params.output_size_mb} MB)` : '';
+        const f = (data.format || fmt).toLowerCase();
+        const label = Utils.getFormatLabel(f);
+        const p = data.params;
+        const det = p ? ` (fps ${p.fps}, ${p.width}×${p.height}, ${p.output_size_mb} MB)` : '';
 
-        this.displayResult(data.gif_url, fmtLabel, details, data.params, fmt);
+        this.displayResult(data.gif_url, label, det, p, f);
+        this._resetUI(true);
+        StorageManager.saveCompletedResult(data.gif_url, p, f);
+        StorageManager.saveToHistory(data.gif_url, f, p);
 
-        // Clean up UI state
-        this.resetUIAfterCompletion();
-        StorageManager.saveCompletedResult(data.gif_url, data.params, fmt);
-
-        // Feature 8: Save to history
-        StorageManager.saveToHistory(data.gif_url, fmt, data.params);
-
-        // Feature 5: Auto-download if enabled
-        if (StorageManager.getAutoDownload()) {
-            this.triggerAutoDownload(data.gif_url, fmtLabel);
-        }
-
-        // Refresh history display
-        if (window.uiManager && window.uiManager.loadAndDisplayHistory) {
-            window.uiManager.loadAndDisplayHistory();
-        }
+        if (StorageManager.getAutoDownload()) this._forceDL(data.gif_url, label);
+        if (window.uiManager?.loadAndDisplayHistory) window.uiManager.loadAndDisplayHistory();
     }
 
-    // Feature 5: Trigger automatic download
-    triggerAutoDownload(url, formatLabel) {
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `converted_video.${Utils.getExtensionForFormat(formatLabel.toLowerCase()).replace('.', '')}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        Utils.showToast('Download started automatically', 'success', 2000);
+    _forceDL(url, label) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `converted_video.${Utils.getExtensionForFormat(label.toLowerCase()).replace('.', '')}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        Utils.showToast('Download started automatically', 'success', 2e3);
     }
 
-    // Handle job error or cancellation
-    handleJobError(data) {
+    _err(data) {
         StorageManager.clearActiveJob();
-        const isCancelled = data.status === 'cancelled';
-        this.uiManager.elements.progressBox.innerHTML = Utils.createErrorMessage(
-            isCancelled ? `Cancelled: ${data.message || 'Conversion cancelled by user'}` : `Error: ${data.message || 'Unknown error'}`
+        this.el.progressBox.innerHTML = Utils.createErrorMessage(
+            data.status === 'cancelled' ? `Cancelled: ${data.message || 'User cancelled'}` : `Error: ${data.message || 'Unknown'}`
         );
-        this.resetUIAfterError();
+        this._resetUI(false);
     }
 
-    // Handle connection lost
-    handleConnectionLost() {
+    _connLost() {
         StorageManager.clearActiveJob();
-        this.uiManager.elements.progressBox.innerHTML = Utils.createErrorMessage('Connection lost. Please refresh the page.');
-        this.resetUIAfterError();
+        this.el.progressBox.innerHTML = Utils.createErrorMessage('Connection lost. Refresh page.');
+        this._resetUI(false);
     }
 
-    // Show retry message during connection issues
-    showRetryMessage(consecutiveErrors, currentStatus) {
-        const errorMessages = {
-            1: 'Connection issue... retrying...',
-            3: 'Having trouble connecting... still trying...'
-        };
+    _retryMsg(cnt, st) {
+        const msg = { 1: 'Connection issue... retrying...', 3: 'Still trying...' }[cnt];
+        if (msg && st !== `error-${cnt}`) this.el.progressBox.innerHTML = Utils.createLoadingContainer(msg);
+    }
 
-        if (errorMessages[consecutiveErrors] && currentStatus !== `error-${consecutiveErrors}`) {
-            this.uiManager.elements.progressBox.innerHTML = Utils.createLoadingContainer(errorMessages[consecutiveErrors]);
+    _resetUI(success) {
+        const ui = this.ui;
+        ui.elements.submitBtn.disabled = false;
+        ui.setResetButtonProcessing(false);
+        ui.setFormatSelectionDisabled(false);
+        ui.setUploadAreaDisabled(false);
+
+        if (success) {
+            ui.elements.form.style.display = 'none';
+            document.getElementById('uploadArea').style.display = 'none';
+            document.querySelector('.smart-settings').style.display = 'none';
+            document.querySelector('.output-section').style.display = 'none';
         }
     }
 
-    // Reset UI state after successful completion
-    resetUIAfterCompletion() {
-        this.uiManager.elements.submitBtn.disabled = false;
-        this.uiManager.setResetButtonProcessing(false);
-        this.uiManager.setFormatSelectionDisabled(false);
-        this.uiManager.setUploadAreaDisabled(false);
-        this.uiManager.elements.form.style.display = 'none';
+    displayResult(url, label, det, params, fmt) {
+        const id = `pv-${Date.now()}`;
+        const isAvif = label.toLowerCase() === 'avif';
+        const isVid = ['mp4', 'av1'].includes(label.toLowerCase());
+        const full = window.location.origin + url;
 
-        // Hide sections when result appears
-        document.getElementById('uploadArea').style.display = 'none';
-        document.querySelector('.smart-settings').style.display = 'none';
-        document.querySelector('.output-section').style.display = 'none';
-    }
-
-    // Reset UI state after error or cancellation
-    resetUIAfterError() {
-        this.uiManager.elements.submitBtn.disabled = false;
-        this.uiManager.setResetButtonProcessing(false);
-        this.uiManager.setFormatSelectionDisabled(false);
-        this.uiManager.setUploadAreaDisabled(false);
-    }
-
-    // Display conversion result with mobile-optimized preview
-    displayResult(gifUrl, fmtLabel, details, params, format) {
-        const previewContainerId = `preview-container-${Date.now()}`;
-        const isAVIF = fmtLabel.toLowerCase() === 'avif';
-        const isMP4 = fmtLabel.toLowerCase() === 'mp4';
-        const isAV1 = fmtLabel.toLowerCase() === 'av1';
-        const isVideo = isMP4 || isAV1;
-        const fullUrl = window.location.origin + gifUrl;
-
-        const imageHtml = this.createPreviewHtml(gifUrl, fmtLabel, previewContainerId, isAVIF, isVideo);
-
-        this.uiManager.elements.resultBox.innerHTML = `
-            ${imageHtml}
+        this.el.resultBox.innerHTML = `
+            ${this._preview(url, label, id, isAvif, isVid)}
             <div class="result-actions">
-                <a class="button download-btn" href="${gifUrl}" download>⬇️ Download ${fmtLabel}</a>
-                <button class="button copy-link-btn" onclick="window.conversionManager.copyResultFile('${fullUrl}')" title="Copy File to Clipboard">
-                    📋 Copy File
-                </button>
+                <a class="button download-btn" href="${url}" download>⬇️ Download ${label}</a>
+                <button class="button copy-link-btn" onclick="window.conversionManager.copyResultFile('${full}')" title="Copy File">📋 Copy File</button>
                 <a class="button" href="/8mb" onclick="return window.uiManager.handleConvertAnother()">🔄 Convert another</a>
             </div>
-
-            <p class="meta center">${details}</p>
+            <p class="meta center">${det}</p>
         `;
-
-        this.uiManager.elements.resultBox.style.display = 'block';
+        this.el.resultBox.style.display = 'block';
     }
 
-    // Feature 4: Copy result file to clipboard (with fallback to link)
     async copyResultFile(url) {
         try {
-            Utils.showToast('Downloading to clipboard...', 'info', 2000);
-
-            // Fetch the file as a blob
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Download failed');
-            const blob = await response.blob();
-
-            // Try to write to clipboard
-            // Note: Clipboard API supports limited MIME types. 
-            // We try to write the blob directly.
-            const item = new ClipboardItem({ [blob.type]: blob });
-            await navigator.clipboard.write([item]);
-
-            Utils.showToast('File copied to clipboard! You can now paste it.', 'success');
-        } catch (error) {
-            console.warn('Copy file failed, falling back to link:', error);
-
-            // Fallback: Copy link
-            const success = await Utils.copyToClipboard(url);
-            if (success) {
-                Utils.showToast('File copy not supported for this format. Link copied instead!', 'warning');
+            Utils.showToast('Downloading to clipboard...', 'info', 2e3);
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Download failed');
+            const blob = await res.blob();
+            await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+            Utils.showToast('File copied to clipboard!', 'success');
+        } catch (e) {
+            console.warn('Copy file failed:', e);
+            if (await Utils.copyToClipboard(url)) {
+                Utils.showToast('File copy failed. Link copied instead!', 'warning');
             } else {
-                Utils.showToast('Failed to copy to clipboard', 'error');
+                Utils.showToast('Failed to copy', 'error');
             }
         }
     }
 
-    // Feature 13: Share to Discord (opens Discord with message)
     shareToDiscord(url) {
-        // Try Discord protocol, fall back to copy
-        const discordWebUrl = `https://discord.com/channels/@me`;
         Utils.copyToClipboard(url);
-        Utils.showToast('Link copied! Paste in Discord to share.', 'success', 3000);
-        window.open(discordWebUrl, '_blank');
+        Utils.showToast('Link copied! Paste in Discord to share.', 'success', 3e3);
+        window.open(`https://discord.com/channels/@me`, '_blank');
     }
 
-    // Create preview HTML for mobile or desktop
-    createPreviewHtml(gifUrl, fmtLabel, previewContainerId, isAVIF, isVideo) {
-        if (Utils.isMobile && window.innerWidth < 768) {
-            return this.createMobilePreviewHtml(gifUrl, fmtLabel, previewContainerId, isAVIF, isVideo);
-        } else {
-            return this.createDesktopPreviewHtml(gifUrl, fmtLabel, isVideo);
+    _preview(url, label, id, avif, vid) {
+        if (!Utils.isMobile || window.innerWidth >= 768) {
+            return `<div class="gif-wrapper">${vid ?
+                `<video src="${url}" controls style="max-width:100%;height:auto" loading="lazy">` :
+                `<img src="${url}" alt="${label}" loading="lazy">`}</div>`;
         }
-    }
 
-    // Create mobile-optimized preview HTML
-    createMobilePreviewHtml(gifUrl, fmtLabel, previewContainerId, isAVIF, isVideo) {
-        const warningText = isAVIF ?
-            '⚠️ AVIF preview may cause crashes on some mobile devices' :
-            isVideo ? '🎬 Video preview with controls' : 'Tap to safely preview on mobile';
-
-        const buttonStyle = isAVIF ?
-            'margin-top: 8px; padding: 10px 20px; background: #fd7e14; border: none; border-radius: 8px; color: white; font-size: 14px; cursor: pointer; font-weight: 500;' :
-            'margin-top: 8px; padding: 10px 20px; background: #28a745; border: none; border-radius: 8px; color: white; font-size: 14px; cursor: pointer; font-weight: 500;';
+        const btnStyle = `margin-top:8px;padding:10px 20px;background:${avif ? '#fd7e14' : '#28a745'};border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:500`;
+        const warn = avif ? '⚠️ AVIF preview may crash mobile' : vid ? '🎬 Video preview' : 'Tap to safely preview';
 
         return `
-            <div class="gif-wrapper">
-                <div id="${previewContainerId}" style="padding: 20px; text-align: center; background: #d4edda; border: 2px solid #c3e6cb; border-radius: 8px;">
-                    <p>✅ Conversion Complete!</p>
-                    <p style="font-size: 14px; color: #155724; margin: 8px 0;">Your ${fmtLabel} is ready!</p>
-                    <button onclick="window.mobileManager.showMobilePreview('${gifUrl}', '${fmtLabel}', '${previewContainerId}')" style="${buttonStyle}">
-                        ${isAVIF ? '⚠️ Try AVIF Preview' : isVideo ? '🎬 Show Video' : '📱 Show Preview'}
-                    </button>
-                    <p style="font-size: 12px; color: ${isAVIF ? '#856404' : '#6c757d'}; margin-top: 8px;">${warningText}</p>
-                </div>
-            </div>
-        `;
+            <div class="gif-wrapper"><div id="${id}" style="padding:20px;text-align:center;background:#d4edda;border:2px solid #c3e6cb;border-radius:8px">
+                <p>✅ Conversion Complete!</p>
+                <p style="font-size:14px;color:#155724;margin:8px 0">Your ${label} is ready!</p>
+                <button onclick="window.mobileManager.showMobilePreview('${url}','${label}','${id}')" style="${btnStyle}">
+                    ${avif ? '⚠️ Try AVIF Preview' : vid ? '🎬 Show Video' : '📱 Show Preview'}
+                </button>
+                <p style="font-size:12px;color:${avif ? '#856404' : '#6c757d'};margin-top:8px">${warn}</p>
+            </div></div>`;
     }
 
-    // Create desktop preview HTML
-    createDesktopPreviewHtml(gifUrl, fmtLabel, isVideo) {
-        if (isVideo) {
-            return `<div class="gif-wrapper"><video src="${gifUrl}" alt="${fmtLabel}" controls onerror="window.mobileManager.handleImageError(this)" onload="window.mobileManager.handleImageLoad(this)" loading="lazy" style="max-width: 100%; height: auto;"/></div>`;
-        } else {
-            return `<div class="gif-wrapper"><img src="${gifUrl}" alt="${fmtLabel}" onerror="window.mobileManager.handleImageError(this)" onload="window.mobileManager.handleImageLoad(this)" loading="lazy"/></div>`;
-        }
+    displayCompletedResult(res) {
+        this.el.progressBox.style.display = 'none';
+        const label = Utils.getFormatLabel(res.format);
+        const det = res.params ? ` (fps ${res.params.fps}, ${res.params.width}×${res.params.height}, ${res.params.output_size_mb} MB)` : '';
+        this.displayResult(res.gifUrl, label, det, res.params, res.format);
+        this._resetUI(true);
     }
 
-    // Display completed result from storage
-    displayCompletedResult(result) {
-        this.uiManager.elements.progressBox.style.display = 'none';
-        const fmtLabel = Utils.getFormatLabel(result.format);
-        const details = result.params ? ` (fps ${result.params.fps}, ${result.params.width}×${result.params.height}, ${result.params.output_size_mb} MB)` : '';
-
-        this.displayResult(result.gifUrl, fmtLabel, details, result.params, result.format);
-        this.uiManager.elements.form.style.display = 'none';
-
-        // Hide sections when result appears
-        document.getElementById('uploadArea').style.display = 'none';
-        document.querySelector('.smart-settings').style.display = 'none';
-        document.querySelector('.output-section').style.display = 'none';
-    }
-
-    // Check for completed result or active job on page load
     async checkAndResumeJob() {
-        // First, check if there's a completed result to display
-        const completedResult = StorageManager.getCompletedResult();
-        if (completedResult) {
-            this.displayCompletedResult(completedResult);
-            return;
-        }
+        const saved = StorageManager.getCompletedResult();
+        if (saved) return this.displayCompletedResult(saved);
 
-        // If no completed result, check for active job to resume
-        const activeJob = StorageManager.getActiveJob();
-        if (!activeJob) return;
+        const job = StorageManager.getActiveJob();
+        if (!job) return;
 
         try {
-            const response = await Utils.fetchWithTimeout(`/progress/${activeJob.jobId}`, {
+            const res = await Utils.fetchWithTimeout(`/progress/${job.jobId}`, {
                 headers: { 'Cache-Control': 'no-cache' }
-            }, 10000);
+            }, 1e4);
 
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const jobData = await response.json();
+            if (!res.ok) throw new Error(res.status);
+            const data = await res.json();
+            const st = data.status;
 
-            // Only resume if job is not done, error, or cancelled
-            if (jobData.status && !['done', 'error', 'cancelled'].includes(jobData.status)) {
-                this.uiManager.elements.progressBox.style.display = 'block';
-                this.uiManager.elements.resultBox.style.display = 'none';
-                this.uiManager.elements.submitBtn.disabled = true;
-                this.uiManager.elements.progressBox.innerHTML = Utils.createLoadingContainer('🔄 Resumed tracking your conversion...');
-
-                // Disable format selection during resumed conversion
-                this.uiManager.setFormatSelectionDisabled(true);
-
-                // Start polling from where we left off
-                this.pollJobStatus(activeJob.jobId, activeJob.format, true);
-                this.uiManager.setResetButtonProcessing(true);
+            if (st && !['done', 'error', 'cancelled'].includes(st)) {
+                this.el.progressBox.style.display = 'block';
+                this.el.resultBox.style.display = 'none';
+                this.el.submitBtn.disabled = true;
+                this.el.progressBox.innerHTML = Utils.createLoadingContainer('🔄 Resumed tracking...');
+                this.ui.setFormatSelectionDisabled(true);
+                this.ui.setResetButtonProcessing(true);
+                this.pollJobStatus(job.jobId, job.format, true);
             } else {
-                // Job is done or errored, clear it
                 StorageManager.clearActiveJob();
             }
-        } catch (error) {
-            console.warn('Failed to resume job:', error.message);
+        } catch (e) {
+            console.warn('Resume failed:', e.message);
             StorageManager.clearActiveJob();
-
-            if (!error.name?.includes('AbortError')) {
-                console.error('Job resumption failed:', error);
-            }
         }
     }
 
-    // Initialize conversion manager
     init() {
-        // Export to global scope for UI integration
         window.conversionManager = this;
-
-        // Check for jobs after a delay for mobile optimization
-        const delay = Utils.isMobile ? 1000 : 100;
         setTimeout(() => {
-            try {
-                this.checkAndResumeJob();
-            } catch (error) {
-                Utils.handleCriticalError(error, 'DOMContentLoaded job resumption');
-            }
-        }, delay);
+            try { this.checkAndResumeJob(); }
+            catch (e) { Utils.handleCriticalError(e, 'Resume job'); }
+        }, Utils.isMobile ? 1000 : 100);
     }
 }

@@ -1,134 +1,134 @@
-// Storage utilities for job persistence and result caching
-export class StorageManager {
-    static STORAGE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE = new Map();
+const TTL = 864e5; // 24 hours
+const LIM = 3;
 
-    static saveToStorage(key, data) {
+// Invalidate cache when other tabs modify storage
+window.addEventListener('storage', e => CACHE.delete(e.key));
+
+export class StorageManager {
+    static STORAGE_TTL = TTL;
+    static MAX_HISTORY_ITEMS = LIM;
+
+    static _save(key, val) {
         try {
-            localStorage.setItem(key, JSON.stringify({ ...data, timestamp: Date.now() }));
-        } catch (e) {
-            console.warn(`Failed to save ${key} to localStorage:`, e);
-        }
+            const data = { ...val, timestamp: Date.now() };
+            CACHE.set(key, data);
+            localStorage.setItem(key, JSON.stringify(data));
+        } catch (e) { }
     }
 
-    static getFromStorage(key, clearFn) {
+    static _get(key, clearFromStorage = false) {
         try {
-            const saved = localStorage.getItem(key);
-            if (!saved) return null;
-            const data = JSON.parse(saved);
-            if (Date.now() - data.timestamp > this.STORAGE_TTL) {
-                clearFn();
+            let data = CACHE.get(key);
+            if (!data) {
+                const raw = localStorage.getItem(key);
+                if (!raw) return null;
+                data = JSON.parse(raw);
+                CACHE.set(key, data);
+            }
+            if (Date.now() - data.timestamp > TTL) {
+                this._clear(key);
                 return null;
             }
             return data;
         } catch (e) {
-            console.warn(`Failed to get ${key} from localStorage:`, e);
-            clearFn();
+            if (clearFromStorage) this._clear(key);
             return null;
         }
     }
 
-    static clearFromStorage(key) {
+    static _clear(key) {
         try {
+            CACHE.delete(key);
             localStorage.removeItem(key);
-        } catch (e) {
-            console.warn(`Failed to clear ${key} from localStorage:`, e);
-        }
+        } catch (e) { }
     }
 
-    // Job persistence functions
     static saveActiveJob(jobId, format) {
-        this.saveToStorage('activeJob', { jobId, format });
+        this._save('activeJob', { jobId, format });
     }
 
     static getActiveJob() {
-        return this.getFromStorage('activeJob', this.clearActiveJob.bind(this));
+        return this._get('activeJob', true);
     }
 
     static clearActiveJob() {
-        this.clearFromStorage('activeJob');
+        this._clear('activeJob');
     }
 
-    // Completed result persistence functions
     static saveCompletedResult(gifUrl, params, format) {
-        this.saveToStorage('completedResult', { gifUrl, params: params || null, format });
+        this._save('completedResult', { gifUrl, params: params || null, format });
         this.clearActiveJob();
     }
 
     static getCompletedResult() {
-        return this.getFromStorage('completedResult', this.clearCompletedResult.bind(this));
+        return this._get('completedResult', true);
     }
 
     static clearCompletedResult() {
-        this.clearFromStorage('completedResult');
+        this._clear('completedResult');
     }
 
-    // Conversion history functions (Feature 8)
-    static MAX_HISTORY_ITEMS = 5;
-
     static saveToHistory(url, format, params) {
+        const history = this.getHistory();
+        history.unshift({
+            url,
+            format,
+            params: params || null,
+            timestamp: Date.now(),
+            date: new Date().toLocaleString()
+        });
+        if (history.length > LIM) history.length = LIM;
+
+        // Custom serialization for history array to match generic structure expected by readers
+        // or just store the array directly?
+        // Original code: localStorage.setItem('conversionHistory', JSON.stringify(history));
+        // Original getHistory: JSON.parse -> filter -> return
+        // Our _save wraps in { timestamp, ...val }. 
+        // THIS IS A BEHAVIOR CHANGE RISK. 
+        // Original saveToHistory saved ARRAY directly, not wrapped object.
+        // We must handle history differently or adapt _save.
+
         try {
-            const history = this.getHistory() || [];
-            const newEntry = {
-                url,
-                format,
-                params: params || null,
-                timestamp: Date.now(),
-                date: new Date().toLocaleString()
-            };
-
-            // Add to beginning, limit to MAX_HISTORY_ITEMS
-            history.unshift(newEntry);
-            if (history.length > this.MAX_HISTORY_ITEMS) {
-                history.pop();
-            }
-
             localStorage.setItem('conversionHistory', JSON.stringify(history));
-        } catch (e) {
-            console.warn('Failed to save to history:', e);
-        }
+            CACHE.set('conversionHistory', history); // Cache the array directly
+        } catch (e) { }
     }
 
     static getHistory() {
         try {
-            const saved = localStorage.getItem('conversionHistory');
-            if (!saved) return [];
-
-            const history = JSON.parse(saved);
-            // Filter out expired entries (24 hours)
-            const validHistory = history.filter(entry =>
-                Date.now() - entry.timestamp < this.STORAGE_TTL
-            );
-
-            // Update storage if items were filtered out
-            if (validHistory.length !== history.length) {
-                localStorage.setItem('conversionHistory', JSON.stringify(validHistory));
+            let history = CACHE.get('conversionHistory');
+            if (!history) {
+                const raw = localStorage.getItem('conversionHistory');
+                if (!raw) return [];
+                history = JSON.parse(raw);
             }
 
-            return validHistory;
+            const now = Date.now();
+            const valid = history.filter(e => now - e.timestamp < TTL);
+
+            if (valid.length !== history.length) {
+                localStorage.setItem('conversionHistory', JSON.stringify(valid));
+                CACHE.set('conversionHistory', valid);
+                return valid;
+            }
+
+            CACHE.set('conversionHistory', history);
+            return history;
         } catch (e) {
-            console.warn('Failed to get history:', e);
             return [];
         }
     }
 
     static clearHistory() {
-        this.clearFromStorage('conversionHistory');
+        this._clear('conversionHistory');
     }
 
-    // Auto-download preference (Feature 5)
     static getAutoDownload() {
-        try {
-            return localStorage.getItem('autoDownload') === 'true';
-        } catch (e) {
-            return false;
-        }
+        return localStorage.getItem('autoDownload') === 'true';
     }
 
     static setAutoDownload(enabled) {
-        try {
-            localStorage.setItem('autoDownload', enabled ? 'true' : 'false');
-        } catch (e) {
-            console.warn('Failed to save auto-download preference:', e);
-        }
+        localStorage.setItem('autoDownload', enabled);
     }
 }
