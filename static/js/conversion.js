@@ -87,13 +87,13 @@ export class ConversionManager {
     handleJobComplete(data, format) {
         StorageManager.clearActiveJob();
         this.uiManager.elements.progressBox.innerHTML = Utils.createSuccessMessage('Done!');
-        
+
         const fmt = (data.format || format).toLowerCase();
         const fmtLabel = Utils.getFormatLabel(fmt);
         const details = data.params ? ` (fps ${data.params.fps}, ${data.params.width}×${data.params.height}, ${data.params.output_size_mb} MB)` : '';
 
         this.displayResult(data.gif_url, fmtLabel, details, data.params, fmt);
-        
+
         // Clean up UI state
         this.resetUIAfterCompletion();
         StorageManager.saveCompletedResult(data.gif_url, data.params, fmt);
@@ -118,11 +118,11 @@ export class ConversionManager {
 
     // Show retry message during connection issues
     showRetryMessage(consecutiveErrors, currentStatus) {
-        const errorMessages = { 
-            1: 'Connection issue... retrying...', 
-            3: 'Having trouble connecting... still trying...' 
+        const errorMessages = {
+            1: 'Connection issue... retrying...',
+            3: 'Having trouble connecting... still trying...'
         };
-        
+
         if (errorMessages[consecutiveErrors] && currentStatus !== `error-${consecutiveErrors}`) {
             this.uiManager.elements.progressBox.innerHTML = Utils.createLoadingContainer(errorMessages[consecutiveErrors]);
         }
@@ -135,7 +135,7 @@ export class ConversionManager {
         this.uiManager.setFormatSelectionDisabled(false);
         this.uiManager.setUploadAreaDisabled(false);
         this.uiManager.elements.form.style.display = 'none';
-        
+
         // Hide sections when result appears
         document.getElementById('uploadArea').style.display = 'none';
         document.querySelector('.smart-settings').style.display = 'none';
@@ -155,8 +155,10 @@ export class ConversionManager {
         const previewContainerId = `preview-container-${Date.now()}`;
         const isAVIF = fmtLabel.toLowerCase() === 'avif';
         const isMP4 = fmtLabel.toLowerCase() === 'mp4';
-        
-        const imageHtml = this.createPreviewHtml(gifUrl, fmtLabel, previewContainerId, isAVIF, isMP4);
+        const isAV1 = fmtLabel.toLowerCase() === 'av1';
+        const isVideo = isMP4 || isAV1;
+
+        const imageHtml = this.createPreviewHtml(gifUrl, fmtLabel, previewContainerId, isAVIF, isVideo);
 
         this.uiManager.elements.resultBox.innerHTML = `
             ${imageHtml}
@@ -171,20 +173,20 @@ export class ConversionManager {
     }
 
     // Create preview HTML for mobile or desktop
-    createPreviewHtml(gifUrl, fmtLabel, previewContainerId, isAVIF, isMP4) {
+    createPreviewHtml(gifUrl, fmtLabel, previewContainerId, isAVIF, isVideo) {
         if (Utils.isMobile && window.innerWidth < 768) {
-            return this.createMobilePreviewHtml(gifUrl, fmtLabel, previewContainerId, isAVIF, isMP4);
+            return this.createMobilePreviewHtml(gifUrl, fmtLabel, previewContainerId, isAVIF, isVideo);
         } else {
-            return this.createDesktopPreviewHtml(gifUrl, fmtLabel, isMP4);
+            return this.createDesktopPreviewHtml(gifUrl, fmtLabel, isVideo);
         }
     }
 
     // Create mobile-optimized preview HTML
-    createMobilePreviewHtml(gifUrl, fmtLabel, previewContainerId, isAVIF, isMP4) {
+    createMobilePreviewHtml(gifUrl, fmtLabel, previewContainerId, isAVIF, isVideo) {
         const warningText = isAVIF ?
             '⚠️ AVIF preview may cause crashes on some mobile devices' :
-            isMP4 ? '🎬 MP4 video preview with controls' : 'Tap to safely preview on mobile';
-        
+            isVideo ? '🎬 Video preview with controls' : 'Tap to safely preview on mobile';
+
         const buttonStyle = isAVIF ?
             'margin-top: 8px; padding: 10px 20px; background: #fd7e14; border: none; border-radius: 8px; color: white; font-size: 14px; cursor: pointer; font-weight: 500;' :
             'margin-top: 8px; padding: 10px 20px; background: #28a745; border: none; border-radius: 8px; color: white; font-size: 14px; cursor: pointer; font-weight: 500;';
@@ -195,7 +197,7 @@ export class ConversionManager {
                     <p>✅ Conversion Complete!</p>
                     <p style="font-size: 14px; color: #155724; margin: 8px 0;">Your ${fmtLabel} is ready!</p>
                     <button onclick="window.mobileManager.showMobilePreview('${gifUrl}', '${fmtLabel}', '${previewContainerId}')" style="${buttonStyle}">
-                        ${isAVIF ? '⚠️ Try AVIF Preview' : isMP4 ? '🎬 Show MP4 Video' : '📱 Show Preview'}
+                        ${isAVIF ? '⚠️ Try AVIF Preview' : isVideo ? '🎬 Show Video' : '📱 Show Preview'}
                     </button>
                     <p style="font-size: 12px; color: ${isAVIF ? '#856404' : '#6c757d'}; margin-top: 8px;">${warningText}</p>
                 </div>
@@ -204,8 +206,8 @@ export class ConversionManager {
     }
 
     // Create desktop preview HTML
-    createDesktopPreviewHtml(gifUrl, fmtLabel, isMP4) {
-        if (isMP4) {
+    createDesktopPreviewHtml(gifUrl, fmtLabel, isVideo) {
+        if (isVideo) {
             return `<div class="gif-wrapper"><video src="${gifUrl}" alt="${fmtLabel}" controls onerror="window.mobileManager.handleImageError(this)" onload="window.mobileManager.handleImageLoad(this)" loading="lazy" style="max-width: 100%; height: auto;"/></div>`;
         } else {
             return `<div class="gif-wrapper"><img src="${gifUrl}" alt="${fmtLabel}" onerror="window.mobileManager.handleImageError(this)" onload="window.mobileManager.handleImageLoad(this)" loading="lazy"/></div>`;
@@ -220,7 +222,7 @@ export class ConversionManager {
 
         this.displayResult(result.gifUrl, fmtLabel, details, result.params, result.format);
         this.uiManager.elements.form.style.display = 'none';
-        
+
         // Hide sections when result appears
         document.getElementById('uploadArea').style.display = 'none';
         document.querySelector('.smart-settings').style.display = 'none';
@@ -279,7 +281,7 @@ export class ConversionManager {
     init() {
         // Export to global scope for UI integration
         window.conversionManager = this;
-        
+
         // Check for jobs after a delay for mobile optimization
         const delay = Utils.isMobile ? 1000 : 100;
         setTimeout(() => {
