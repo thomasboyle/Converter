@@ -36,16 +36,16 @@ export class StorageManager {
     }
 
     // Job persistence functions
-    static saveActiveJob(jobId, format) { 
-        this.saveToStorage('activeJob', { jobId, format }); 
+    static saveActiveJob(jobId, format) {
+        this.saveToStorage('activeJob', { jobId, format });
     }
-    
-    static getActiveJob() { 
-        return this.getFromStorage('activeJob', this.clearActiveJob.bind(this)); 
+
+    static getActiveJob() {
+        return this.getFromStorage('activeJob', this.clearActiveJob.bind(this));
     }
-    
-    static clearActiveJob() { 
-        this.clearFromStorage('activeJob'); 
+
+    static clearActiveJob() {
+        this.clearFromStorage('activeJob');
     }
 
     // Completed result persistence functions
@@ -53,12 +53,82 @@ export class StorageManager {
         this.saveToStorage('completedResult', { gifUrl, params: params || null, format });
         this.clearActiveJob();
     }
-    
-    static getCompletedResult() { 
-        return this.getFromStorage('completedResult', this.clearCompletedResult.bind(this)); 
+
+    static getCompletedResult() {
+        return this.getFromStorage('completedResult', this.clearCompletedResult.bind(this));
     }
-    
-    static clearCompletedResult() { 
-        this.clearFromStorage('completedResult'); 
+
+    static clearCompletedResult() {
+        this.clearFromStorage('completedResult');
+    }
+
+    // Conversion history functions (Feature 8)
+    static MAX_HISTORY_ITEMS = 5;
+
+    static saveToHistory(url, format, params) {
+        try {
+            const history = this.getHistory() || [];
+            const newEntry = {
+                url,
+                format,
+                params: params || null,
+                timestamp: Date.now(),
+                date: new Date().toLocaleString()
+            };
+
+            // Add to beginning, limit to MAX_HISTORY_ITEMS
+            history.unshift(newEntry);
+            if (history.length > this.MAX_HISTORY_ITEMS) {
+                history.pop();
+            }
+
+            localStorage.setItem('conversionHistory', JSON.stringify(history));
+        } catch (e) {
+            console.warn('Failed to save to history:', e);
+        }
+    }
+
+    static getHistory() {
+        try {
+            const saved = localStorage.getItem('conversionHistory');
+            if (!saved) return [];
+
+            const history = JSON.parse(saved);
+            // Filter out expired entries (24 hours)
+            const validHistory = history.filter(entry =>
+                Date.now() - entry.timestamp < this.STORAGE_TTL
+            );
+
+            // Update storage if items were filtered out
+            if (validHistory.length !== history.length) {
+                localStorage.setItem('conversionHistory', JSON.stringify(validHistory));
+            }
+
+            return validHistory;
+        } catch (e) {
+            console.warn('Failed to get history:', e);
+            return [];
+        }
+    }
+
+    static clearHistory() {
+        this.clearFromStorage('conversionHistory');
+    }
+
+    // Auto-download preference (Feature 5)
+    static getAutoDownload() {
+        try {
+            return localStorage.getItem('autoDownload') === 'true';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    static setAutoDownload(enabled) {
+        try {
+            localStorage.setItem('autoDownload', enabled ? 'true' : 'false');
+        } catch (e) {
+            console.warn('Failed to save auto-download preference:', e);
+        }
     }
 }

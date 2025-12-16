@@ -107,6 +107,9 @@
 			<input id="video" name="video" type="file" accept="video/*" required hidden>
 		</div>
 
+		<!-- Feature 6: Video Preview Container -->
+		<div id="video-preview-container" class="video-preview-container" style="display: none;"></div>
+
 		<!-- Settings and Output -->
 		<div class="settings-output-container">
 			<!-- Smart Settings -->
@@ -180,6 +183,20 @@
 						<span class="file-extension" id="fileExtension">.mp4</span>
 					</div>
 				</div>
+				<div id="audio-warning" class="audio-warning" style="display: none;">
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+						<path
+							d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+							stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+					<span>⚠️ Audio will be removed in this format</span>
+				</div>
+				<div class="output-field auto-download-field">
+					<label class="auto-download-label">
+						<input type="checkbox" id="auto-download-toggle">
+						<span>Auto-download when complete</span>
+					</label>
+				</div>
 				<div class="output-note">
 					<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
 						<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
@@ -199,6 +216,20 @@
 
 		<div id="progress" class="progress-box center" style="display:none;"></div>
 		<div id="result" style="display:none; margin-top: 16px;"></div>
+
+		<!-- Feature 8: Conversion History -->
+		<div id="history-section" class="history-section" style="display: none;">
+			<div class="history-header">
+				<h3>📜 Recent Conversions</h3>
+				<button class="history-clear-btn" onclick="window.uiManager?.clearHistory()">🗑️ Clear</button>
+			</div>
+			<div id="history-list" class="history-list"></div>
+		</div>
+
+		<!-- Feature 10: Keyboard Shortcuts Hint -->
+		<div class="keyboard-hints">
+			<span>⌨️ <kbd>Enter</kbd> to convert • <kbd>Esc</kbd> to reset</span>
+		</div>
 
 	</div>
 

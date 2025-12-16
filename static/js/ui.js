@@ -17,13 +17,21 @@ export class UIManager {
             fileExtension: document.getElementById('fileExtension'),
             avifBanner: document.getElementById('avif-discord-banner'),
             queueCounter: document.getElementById('queue-counter'),
-            queueCount: document.getElementById('queue-count')
+            queueCount: document.getElementById('queue-count'),
+            // New elements for QOL features
+            videoPreview: document.getElementById('video-preview-container'),
+            audioWarning: document.getElementById('audio-warning'),
+            autoDownloadToggle: document.getElementById('auto-download-toggle'),
+            historySection: document.getElementById('history-section'),
+            historyList: document.getElementById('history-list')
         };
 
         this.currentUploadController = null;
+        this.currentUploadXHR = null;
         this.pageVisible = true;
         this.queueCounterInterval = null;
         this.queueRetryCount = 0;
+        this.selectedFile = null;
     }
 
     // Initialize UI event handlers
@@ -34,6 +42,9 @@ export class UIManager {
         this.setupResetButton();
         this.setupVisibilityHandling();
         this.startQueuePolling();
+        this.setupKeyboardShortcuts();
+        this.setupAutoDownloadToggle();
+        this.loadAndDisplayHistory();
     }
 
     // Format selection and banner management
@@ -44,6 +55,7 @@ export class UIManager {
             const extension = Utils.getExtensionForFormat(format);
             this.elements.fileExtension.textContent = extension;
             this.updateAVIFBanner(format);
+            this.updateAudioWarning(format); // Feature 11
         });
 
         // Initialize banner state and file extension on page load
@@ -53,6 +65,15 @@ export class UIManager {
             this.elements.fileExtension.textContent = extension;
         }
         this.updateAVIFBanner(selectedFormat);
+        this.updateAudioWarning(selectedFormat); // Feature 11
+    }
+
+    // Feature 11: Update audio warning based on format
+    updateAudioWarning(format) {
+        if (this.elements.audioWarning) {
+            const supportsAudio = Utils.formatSupportsAudio(format);
+            this.elements.audioWarning.style.display = supportsAudio ? 'none' : 'flex';
+        }
     }
 
     // Function to update banner visibility based on format
@@ -100,9 +121,23 @@ export class UIManager {
             // Only process drop if upload area is not disabled
             if (this.elements.uploadArea.style.pointerEvents !== 'none') {
                 const files = e.dataTransfer.files;
-                if (files.length > 0 && files[0].type.startsWith('video/')) {
+
+                // Feature 14: Batch processing hint
+                if (files.length > 1) {
+                    Utils.showToast('Only single file upload is supported. Using first file.', 'info');
+                }
+
+                if (files.length > 0) {
+                    const file = files[0];
+                    // Feature 9: File validation
+                    const validation = Utils.isValidVideoFile(file);
+                    if (!validation.valid) {
+                        Utils.showToast(validation.error, 'error', 4000);
+                        return;
+                    }
+
                     this.elements.fileInput.files = files;
-                    this.updateUploadAreaWithFile(files[0]);
+                    this.updateUploadAreaWithFile(file);
                 }
             }
         });
@@ -111,11 +146,57 @@ export class UIManager {
     // Update upload area display with file info
     updateUploadAreaWithFile(file) {
         if (!this.elements.uploadArea) return;
-        
+
+        this.selectedFile = file;
         this.elements.uploadArea.querySelector('.upload-text').textContent = file.name;
-        this.elements.uploadArea.querySelector('.upload-subtext').textContent = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+        this.elements.uploadArea.querySelector('.upload-subtext').textContent = Utils.formatFileSize(file.size);
         this.elements.uploadArea.style.borderColor = '#34c759';
         this.elements.uploadArea.style.backgroundColor = '#f0fff4';
+
+        // Feature 6: Generate and show video preview
+        this.showVideoPreview(file);
+    }
+
+    // Feature 6: Show video preview with thumbnail and duration
+    showVideoPreview(file) {
+        const previewContainer = this.elements.videoPreview;
+        if (!previewContainer) return;
+
+        // Create object URL for preview
+        const videoUrl = URL.createObjectURL(file);
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.muted = true;
+
+        video.onloadedmetadata = () => {
+            const duration = Utils.formatDuration(video.duration);
+            const format = this.elements.formatSelect?.value || 'av1';
+            const estimatedTime = Utils.estimateConversionTime(file.size / (1024 * 1024), format);
+
+            previewContainer.innerHTML = `
+                <div class="video-preview-card">
+                    <video src="${videoUrl}" class="preview-thumbnail" muted playsinline></video>
+                    <div class="preview-info">
+                        <span class="preview-duration">📹 ${duration}</span>
+                        <span class="preview-estimate">⏱️ Est: ${estimatedTime}</span>
+                    </div>
+                </div>
+            `;
+            previewContainer.style.display = 'block';
+
+            // Try to show first frame
+            const previewVideo = previewContainer.querySelector('video');
+            if (previewVideo) {
+                previewVideo.currentTime = 0.1;
+            }
+        };
+
+        video.onerror = () => {
+            URL.revokeObjectURL(videoUrl);
+            previewContainer.style.display = 'none';
+        };
+
+        video.src = videoUrl;
     }
 
     // Form submission handling
@@ -130,7 +211,7 @@ export class UIManager {
         });
     }
 
-    // Start conversion process
+    // Start conversion process - Feature 2: With upload progress bar
     async startConversion() {
         // Clear any existing completed result when starting new conversion
         StorageManager.clearCompletedResult();
@@ -140,7 +221,7 @@ export class UIManager {
 
         this.elements.progressBox.style.display = 'block';
         this.elements.resultBox.style.display = 'none';
-        this.elements.progressBox.innerHTML = Utils.createLoadingContainer('Uploading...');
+        this.elements.progressBox.innerHTML = Utils.createUploadProgressBar(0);
         this.elements.submitBtn.disabled = true;
 
         // Disable format selection and upload area during conversion
@@ -152,48 +233,72 @@ export class UIManager {
         if (this.elements.formatSelect) data.append('format', this.elements.formatSelect.value);
         if (this.elements.filenameInput) data.append('filename', this.elements.filenameInput.value);
 
-        try {
-            const controller = new AbortController();
-            this.currentUploadController = controller;
+        // Use XHR for upload progress tracking
+        const xhr = new XMLHttpRequest();
+        this.currentUploadXHR = xhr;
 
-            const resp = await fetch('/start', {
-                method: 'POST',
-                body: data,
-                signal: controller.signal
-            });
-
-            if (!resp.ok) {
-                const err = await resp.json().catch(() => ({}));
-                throw new Error(err.error || `HTTP ${resp.status}: ${resp.statusText}`);
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const percent = (e.loaded / e.total) * 100;
+                this.elements.progressBox.innerHTML = Utils.createUploadProgressBar(percent);
             }
-            
-            const json = await resp.json();
-            const jobId = json.job_id;
-            
-            this.currentUploadController = null;
-            StorageManager.saveActiveJob(jobId, this.elements.formatSelect?.value || 'avif');
-            
-            this.elements.progressBox.innerHTML = Utils.createLoadingContainer('Started. Preparing...');
-            
-            // Trigger conversion polling - this will be handled by the conversion module
-            if (window.conversionManager) {
-                window.conversionManager.pollJobStatus(jobId, this.elements.formatSelect?.value || 'avif');
+        };
+
+        xhr.onload = () => {
+            this.currentUploadXHR = null;
+
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const json = JSON.parse(xhr.responseText);
+                    const jobId = json.job_id;
+
+                    StorageManager.saveActiveJob(jobId, this.elements.formatSelect?.value || 'avif');
+                    this.elements.progressBox.innerHTML = Utils.createLoadingContainer('Processing... Please wait');
+
+                    // Trigger conversion polling
+                    if (window.conversionManager) {
+                        window.conversionManager.pollJobStatus(jobId, this.elements.formatSelect?.value || 'avif');
+                    }
+                } catch (e) {
+                    this.handleUploadError('Invalid server response');
+                }
+            } else {
+                let errorMessage = `HTTP ${xhr.status}`;
+                try {
+                    const err = JSON.parse(xhr.responseText);
+                    errorMessage = err.error || errorMessage;
+                } catch (e) { }
+                this.handleUploadError(errorMessage);
             }
-            
-        } catch (err) {
-            this.currentUploadController = null;
-            console.error('Upload error:', err);
+        };
 
-            const errorMessage = err.message.includes('Failed to fetch') || err.message.includes('NetworkError')
-                ? 'Network error. Please check your connection and try again.'
-                : err.message;
+        xhr.onerror = () => {
+            this.currentUploadXHR = null;
+            this.handleUploadError('Network error. Please check your connection.');
+        };
 
-            this.elements.progressBox.innerHTML = Utils.createErrorMessage(errorMessage);
-            this.elements.submitBtn.disabled = false;
-            this.setResetButtonProcessing(false);
-            this.setFormatSelectionDisabled(false);
-            this.setUploadAreaDisabled(false);
-        }
+        xhr.onabort = () => {
+            this.currentUploadXHR = null;
+            this.elements.progressBox.innerHTML = Utils.createErrorMessage('Upload cancelled');
+            this.resetUploadState();
+        };
+
+        xhr.open('POST', '/start');
+        xhr.send(data);
+    }
+
+    // Handle upload errors
+    handleUploadError(message) {
+        this.elements.progressBox.innerHTML = Utils.createErrorMessage(message);
+        this.resetUploadState();
+    }
+
+    // Reset upload state after error
+    resetUploadState() {
+        this.elements.submitBtn.disabled = false;
+        this.setResetButtonProcessing(false);
+        this.setFormatSelectionDisabled(false);
+        this.setUploadAreaDisabled(false);
     }
 
     // Reset button handling
@@ -253,7 +358,7 @@ export class UIManager {
     // Reset upload area to default state
     resetUploadArea() {
         if (!this.elements.uploadArea) return;
-        
+
         this.elements.uploadArea.querySelector('.upload-text').textContent = 'Drag & drop your video';
         this.elements.uploadArea.querySelector('.upload-subtext').textContent = 'or click to browse files';
         this.elements.uploadArea.style.borderColor = '#d2d2d7';
@@ -264,7 +369,7 @@ export class UIManager {
     resetFormInputs() {
         const selectedFormat = this.elements.formatSelect?.value || 'av1';
         const defaultExtension = Utils.getExtensionForFormat(selectedFormat);
-        
+
         if (this.elements.filenameInput) {
             this.elements.filenameInput.value = 'output';
         }
@@ -324,7 +429,7 @@ export class UIManager {
     // Function to toggle reset button processing state
     setResetButtonProcessing(isProcessing) {
         if (!this.elements.resetBtn) return;
-        
+
         if (isProcessing) {
             this.elements.resetBtn.classList.add('processing');
             this.elements.resetBtn.textContent = 'Cancel';
@@ -352,8 +457,8 @@ export class UIManager {
         if (!this.pageVisible || !this.elements.queueCount) return;
 
         try {
-            const response = await Utils.fetchWithTimeout('/queue', { 
-                headers: { 'Cache-Control': 'no-cache' } 
+            const response = await Utils.fetchWithTimeout('/queue', {
+                headers: { 'Cache-Control': 'no-cache' }
             }, 10000);
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -379,7 +484,7 @@ export class UIManager {
     startQueuePolling() {
         if (this.queueCounterInterval) clearInterval(this.queueCounterInterval);
         this.updateQueueCounter();
-        
+
         const queuePollInterval = Utils.isMobile ? 20000 : 5000;
         this.queueCounterInterval = setInterval(() => this.updateQueueCounter(), queuePollInterval);
     }
@@ -390,4 +495,94 @@ export class UIManager {
         window.location.href = '/8mb';
         return false;
     }
+
+    // Feature 10: Keyboard shortcuts
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Ignore if user is typing in an input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                // Allow Escape in inputs
+                if (e.key !== 'Escape') return;
+            }
+
+            switch (e.key) {
+                case 'Enter':
+                    // Submit form if file is selected and button is enabled
+                    if (this.elements.fileInput?.files.length > 0 &&
+                        !this.elements.submitBtn?.disabled) {
+                        e.preventDefault();
+                        this.elements.form?.requestSubmit?.() || this.elements.submitBtn?.click();
+                    }
+                    break;
+                case 'Escape':
+                    // Reset/Cancel
+                    e.preventDefault();
+                    this.resetForm();
+                    break;
+            }
+        });
+    }
+
+    // Feature 5: Setup auto-download toggle
+    setupAutoDownloadToggle() {
+        const toggle = this.elements.autoDownloadToggle;
+        if (!toggle) return;
+
+        // Load saved preference
+        toggle.checked = StorageManager.getAutoDownload();
+
+        toggle.addEventListener('change', () => {
+            StorageManager.setAutoDownload(toggle.checked);
+            Utils.showToast(toggle.checked ? 'Auto-download enabled' : 'Auto-download disabled', 'info', 2000);
+        });
+    }
+
+    // Feature 8: Load and display conversion history
+    loadAndDisplayHistory() {
+        const historySection = this.elements.historySection;
+        const historyList = this.elements.historyList;
+        if (!historySection || !historyList) return;
+
+        const history = StorageManager.getHistory();
+
+        if (history.length === 0) {
+            historySection.style.display = 'none';
+            return;
+        }
+
+        historySection.style.display = 'block';
+        historyList.innerHTML = history.map((item, index) => `
+            <div class="history-item" data-index="${index}">
+                <div class="history-item-info">
+                    <span class="history-format">${Utils.getFormatLabel(item.format)}</span>
+                    <span class="history-date">${item.date}</span>
+                    ${item.params ? `<span class="history-size">${item.params.output_size_mb} MB</span>` : ''}
+                </div>
+                <div class="history-item-actions">
+                    <a href="${item.url}" download class="history-download-btn" title="Download">⬇️</a>
+                    <button class="history-copy-btn" data-url="${item.url}" title="Copy Link">📋</button>
+                </div>
+            </div>
+        `).join('');
+
+        // Add click handlers for copy buttons
+        historyList.querySelectorAll('.history-copy-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const url = e.target.dataset.url;
+                const fullUrl = window.location.origin + url;
+                const success = await Utils.copyToClipboard(fullUrl);
+                Utils.showToast(success ? 'Link copied!' : 'Failed to copy', success ? 'success' : 'error');
+            });
+        });
+    }
+
+    // Clear conversion history
+    clearHistory() {
+        StorageManager.clearHistory();
+        if (this.elements.historySection) {
+            this.elements.historySection.style.display = 'none';
+        }
+        Utils.showToast('History cleared', 'success');
+    }
 }
+
