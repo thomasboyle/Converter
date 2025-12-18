@@ -1,26 +1,31 @@
 <!doctype html>
 <html lang="en">
+
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Clip That - Video Trimming Tool | Free Online Video Cropper | Telinquents</title>
-	<meta name="description" content="Clip that - Free online video trimmer. Upload and crop videos easily with interactive timeline controls. Perfect for creating social media clips.">
-	<meta name="keywords" content="clip video, trim video, crop video, video trimmer, online video cropper, video clipper, video editor, social media clips, free video trimmer">
-	<meta name="author" content="Telinquents">
+	<title>Clip That - Video Trimming Tool | Discord Tools</title>
+	<meta name="description"
+		content="Clip that - Free online video trimmer. Upload and crop videos easily with interactive timeline controls. Perfect for creating social media clips.">
+	<meta name="keywords"
+		content="clip video, trim video, crop video, video trimmer, online video cropper, video clipper, video editor, social media clips, free video trimmer">
+	<meta name="author" content="Discord Tools">
 	<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
 	<meta property="og:type" content="website">
-	<meta property="og:url" content="https://www.telinquents.com/clip">
-	<meta property="og:title" content="Clip that - Video Trimming Tool | Free Online Video Cropper">
-	<meta property="og:description" content="Clip that - Free online video trimmer. Upload and crop videos easily with interactive timeline controls. Perfect for creating social media clips.">
-	<meta property="og:image" content="https://telinquents.com/images/card1.jpg">
-	<meta property="og:site_name" content="Telinquents Clip Tool">
+	<meta property="og:url" content="https://www.jackybot.xyz/clip">
+	<meta property="og:title" content="Clip That - Video Trimming Tool | Discord Tools">
+	<meta property="og:description"
+		content="Free online video trimmer. Upload and crop videos easily with interactive timeline controls.">
+	<meta property="og:image" content="https://www.jackybot.xyz/static/favicon.jpg">
+	<meta property="og:site_name" content="Discord Tools">
 	<meta property="twitter:card" content="summary_large_image">
-	<meta property="twitter:url" content="https://www.telinquents.com/clip">
-	<meta property="twitter:title" content="Clip that - Video Trimming Tool | Free Online Video Cropper">
-	<meta property="twitter:description" content="Clip that - Free online video trimmer. Upload and crop videos easily with interactive timeline controls. Perfect for creating social media clips.">
-	<meta property="twitter:image" content="https://telinquents.com/images/card1.jpg">
+	<meta property="twitter:url" content="https://www.jackybot.xyz/clip">
+	<meta property="twitter:title" content="Clip That - Video Trimming Tool | Discord Tools">
+	<meta property="twitter:description"
+		content="Free online video trimmer. Upload and crop videos easily with interactive timeline controls.">
+	<meta property="twitter:image" content="https://www.jackybot.xyz/static/favicon.jpg">
 	<meta name="theme-color" content="#007AFF">
-	<link rel="canonical" href="https://www.telinquents.com/clip">
+	<link rel="canonical" href="https://www.jackybot.xyz/clip">
 	<link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='favicon.jpg') }}">
 	<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 	<script type="application/ld+json">
@@ -28,8 +33,8 @@
 		"@context": "https://schema.org",
 		"@graph": [{
 			"@type": "WebApplication",
-			"name": "Clip that Video Trimmer",
-			"url": "https://www.telinquents.com/clip",
+			"name": "Clip That Video Trimmer",
+			"url": "https://www.jackybot.xyz/clip",
 			"description": "Free online video trimmer with interactive timeline controls",
 			"applicationCategory": "MultimediaApplication",
 			"operatingSystem": "Web Browser",
@@ -42,13 +47,14 @@
 			"featureList": ["Interactive timeline controls", "Real-time video preview", "Precise trimming", "Social media optimized"],
 			"author": {
 				"@type": "Organization",
-				"name": "Telinquents",
-				"url": "https://www.telinquents.com"
+				"name": "Discord Tools",
+				"url": "https://www.jackybot.xyz"
 			}
 		}]
 	}
 	</script>
 </head>
+
 <body>
 	<div class="container">
 		<a href="/" class="back-button">← Back to Home</a>
@@ -63,8 +69,10 @@
 			<div class="upload-area" id="uploadArea">
 				<div class="upload-icon">
 					<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-						<path d="M7 14l5-5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-						<path d="M12 19V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+						<path d="M7 14l5-5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+							stroke-linejoin="round" />
+						<path d="M12 19V9" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+							stroke-linejoin="round" />
 					</svg>
 				</div>
 				<p class="upload-text">Drag & drop your video</p>
@@ -124,10 +132,11 @@
 				<div class="play-controls">
 					<button type="button" id="playPauseBtn" class="control-button">
 						<svg id="playIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-							<path d="M8 5v14l11-7z"/>
+							<path d="M8 5v14l11-7z" />
 						</svg>
-						<svg id="pauseIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
-							<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+						<svg id="pauseIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"
+							style="display: none;">
+							<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
 						</svg>
 						<span>Play</span>
 					</button>
@@ -320,17 +329,17 @@
 					reject(new Error('Video loading timed out after 30 seconds'));
 				}, 30000);
 
-				previewVideo.onloadedmetadata = function() {
+				previewVideo.onloadedmetadata = function () {
 					clearTimeout(timeout);
 					resolve();
 				};
 
-				previewVideo.onerror = function(e) {
+				previewVideo.onerror = function (e) {
 					clearTimeout(timeout);
 					reject(new Error('Browser cannot play this video format'));
 				};
 
-				previewVideo.oncanplay = function() {
+				previewVideo.oncanplay = function () {
 					clearTimeout(timeout);
 					resolve();
 				};
@@ -428,13 +437,13 @@
 			}
 		});
 
-		previewVideo.addEventListener('timeupdate', function() {
+		previewVideo.addEventListener('timeupdate', function () {
 			enforceTimeBoundaries();
 			updateTimeDisplay();
 			updateTimeline();
 		});
 
-		previewVideo.addEventListener('loadedmetadata', function() {
+		previewVideo.addEventListener('loadedmetadata', function () {
 			updateTimeline();
 		});
 
@@ -442,7 +451,7 @@
 			previewVideo.addEventListener(event, updatePlayPauseButton);
 		});
 
-		previewVideo.addEventListener('click', function(e) {
+		previewVideo.addEventListener('click', function (e) {
 			if (previewVideo.paused && previewVideo.currentTime >= endTime) {
 				e.preventDefault();
 				previewVideo.currentTime = startTime;
@@ -450,7 +459,7 @@
 			}
 		});
 
-		previewVideo.addEventListener('seeking', function() {
+		previewVideo.addEventListener('seeking', function () {
 			if (previewVideo.currentTime < startTime) previewVideo.currentTime = startTime;
 			else if (previewVideo.currentTime > endTime) previewVideo.currentTime = endTime;
 		});
@@ -488,7 +497,7 @@
 		timelineTrack.addEventListener('mouseleave', () => timelineScrubber.style.display = 'none');
 
 
-		timelineTrack.addEventListener('click', function(e) {
+		timelineTrack.addEventListener('click', function (e) {
 			if (isDragging) return;
 			const seekTime = getTimelinePosition(e);
 			if (seekTime >= startTime && seekTime <= endTime) {
@@ -499,14 +508,14 @@
 
 
 		[rangeHandleStart, rangeHandleEnd].forEach((handle, index) => {
-			handle.addEventListener('mousedown', function(e) {
+			handle.addEventListener('mousedown', function (e) {
 				isDragging = true;
 				activeHandle = index === 0 ? 'start' : 'end';
 				e.preventDefault();
 			});
 		});
 
-		document.addEventListener('mousemove', function(e) {
+		document.addEventListener('mousemove', function (e) {
 			if (!isDragging || !activeHandle) return;
 			const rect = timelineTrack.getBoundingClientRect();
 			const x = e.clientX - rect.left;
@@ -526,7 +535,7 @@
 			updateTimeDisplay();
 		});
 
-		document.addEventListener('mouseup', function() {
+		document.addEventListener('mouseup', function () {
 			if (isDragging && activeHandle) {
 				previewVideo.currentTime = activeHandle === 'start' ? startTime : endTime;
 				lastMovedHandle = activeHandle;
@@ -563,7 +572,7 @@
 		}
 
 		playPauseBtn.addEventListener('click', togglePlayPause);
-		document.addEventListener('keydown', function(e) {
+		document.addEventListener('keydown', function (e) {
 			if (e.code === 'Space' && videoFile) {
 				e.preventDefault();
 				togglePlayPause();
@@ -572,7 +581,7 @@
 
 
 
-		clipForm.addEventListener('submit', function(e) {
+		clipForm.addEventListener('submit', function (e) {
 			e.preventDefault();
 			if (!videoFile) return alert('Please select a video file first.');
 			if (endTime - startTime < 1) return alert('Please select at least 1 second of video to clip.');
@@ -586,28 +595,28 @@
 			formData.append('end_time', endTime.toString());
 
 			fetch('/clip/start', { method: 'POST', body: formData })
-			.then(response => response.json())
-			.then(data => data.job_id ? pollProgress(data.job_id) : Promise.reject(new Error(data.error || 'Failed to start clipping')))
-			.catch(error => progressBox.innerHTML = `<div style="text-align: center; color: #dc3545; font-weight: bold;">❌ ${error.message}</div>`);
+				.then(response => response.json())
+				.then(data => data.job_id ? pollProgress(data.job_id) : Promise.reject(new Error(data.error || 'Failed to start clipping')))
+				.catch(error => progressBox.innerHTML = `<div style="text-align: center; color: #dc3545; font-weight: bold;">❌ ${error.message}</div>`);
 		});
 
 		function pollProgress(jobId) {
 			const checkProgress = () => {
 				fetch(`/clip/progress/${jobId}`)
-				.then(response => response.json())
-				.then(data => {
-					if (data.status === 'done') {
-						progressBox.style.display = 'none';
-						currentJobId = jobId;
-						showResult(data);
-					} else if (data.status === 'error') {
-						progressBox.innerHTML = `<div style="text-align: center; color: #dc3545; font-weight: bold;">❌ ${data.message}</div>`;
-					} else {
-						progressBox.innerHTML = `<div class="loading-container"><div class="loader"></div><p class="loading-text">${data.message || 'Processing...'}</p></div>`;
-						setTimeout(checkProgress, 1000);
-					}
-				})
-				.catch(error => progressBox.innerHTML = `<div style="text-align: center; color: #dc3545; font-weight: bold;">❌ ${error.message}</div>`);
+					.then(response => response.json())
+					.then(data => {
+						if (data.status === 'done') {
+							progressBox.style.display = 'none';
+							currentJobId = jobId;
+							showResult(data);
+						} else if (data.status === 'error') {
+							progressBox.innerHTML = `<div style="text-align: center; color: #dc3545; font-weight: bold;">❌ ${data.message}</div>`;
+						} else {
+							progressBox.innerHTML = `<div class="loading-container"><div class="loader"></div><p class="loading-text">${data.message || 'Processing...'}</p></div>`;
+							setTimeout(checkProgress, 1000);
+						}
+					})
+					.catch(error => progressBox.innerHTML = `<div style="text-align: center; color: #dc3545; font-weight: bold;">❌ ${error.message}</div>`);
 			};
 			checkProgress();
 		}
@@ -705,7 +714,7 @@
 			resetForm();
 		}
 
-		document.addEventListener('click', function(e) {
+		document.addEventListener('click', function (e) {
 			if (e.target && e.target.id === 'clipAnotherButton') {
 				clipAnother();
 			}
@@ -713,7 +722,7 @@
 
 		updateTimeDisplay();
 
-		window.addEventListener('load', function() {
+		window.addEventListener('load', function () {
 			setTimeout(() => {
 				const recommendedFormats = detectBrowserVideoSupport();
 				const supportMessage = `Your browser supports: ${recommendedFormats.join(', ')}. For best compatibility, use MP4 with H.264 codec.`;
@@ -728,7 +737,7 @@
 	<script async src="https://www.googletagmanager.com/gtag/js?id=YOUR_GA_MEASUREMENT_ID"></script>
 	<script>
 		window.dataLayer = window.dataLayer || [];
-		function gtag(){dataLayer.push(arguments);}
+		function gtag() { dataLayer.push(arguments); }
 		gtag('js', new Date());
 		gtag('config', 'YOUR_GA_MEASUREMENT_ID');
 
@@ -738,4 +747,5 @@
 		});
 	</script>
 </body>
+
 </html>
