@@ -1,48 +1,53 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  
+
   <!-- Format mapping (safe & maintainable) -->
   {% set format_mapping = {
-      'gif': 'GIF',
-      'webp': 'WebP',
-      'mp4': 'MP4',
-      'av1': 'AV1',
-      'avif': 'AVIF'
+  'gif': 'GIF',
+  'webp': 'WebP',
+  'mp4': 'MP4',
+  'av1': 'AV1',
+  'avif': 'AVIF'
   } %}
   {% set fmt_label = format_mapping.get(format.lower(), 'Unknown') %}
 
   <!-- Primary Meta Tags -->
-  <title>Your Converted {{ fmt_label }} - Download Ready | Telinquents 8MB Converter</title>
-  <meta name="title" content="Your Converted {{ fmt_label }} - Download Ready | Telinquents 8MB Converter">
-  <meta name="description" content="Your video has been successfully converted to {{ fmt_label }} format under 8MB. Download your optimized video file ready for social media, Discord, and web use.">
-  <meta name="keywords" content="converted {{ format }}, download {{ fmt_label }}, video conversion complete, {{ fmt_label }} file, optimized video">
-  <meta name="author" content="Telinquents">
+  <title>Your Converted {{ fmt_label }} - Download Ready | Discord Tools</title>
+  <meta name="title" content="Your Converted {{ fmt_label }} - Download Ready | Discord Tools">
+  <meta name="description"
+    content="Your video has been successfully converted to {{ fmt_label }} format under 8MB. Download your optimized video file ready for social media, Discord, and web use.">
+  <meta name="keywords"
+    content="converted {{ format }}, download {{ fmt_label }}, video conversion complete, {{ fmt_label }} file, optimized video">
+  <meta name="author" content="Discord Tools">
   <meta name="robots" content="noindex, follow">
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://www.telinquents.com/result">
+  <meta property="og:url" content="https://www.jackybot.xyz/result">
   <meta property="og:title" content="Your Converted {{ fmt_label }} - Download Ready">
-  <meta property="og:description" content="Your video has been successfully converted to {{ fmt_label }} format under 8MB. Download your optimized video file.">
+  <meta property="og:description"
+    content="Your video has been successfully converted to {{ fmt_label }} format under 8MB. Download your optimized video file.">
   <meta property="og:image" content="{{ preview_url }}"> <!-- Fixed: Dynamic preview -->
   <meta property="og:image:alt" content="Converted {{ fmt_label }} file preview">
-  <meta property="og:site_name" content="Telinquents 8MB Converter">
+  <meta property="og:site_name" content="Discord Tools">
 
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
-  <meta property="twitter:url" content="https://www.telinquents.com/result">
+  <meta property="twitter:url" content="https://www.jackybot.xyz/result">
   <meta property="twitter:title" content="Your Converted {{ fmt_label }} - Download Ready">
-  <meta property="twitter:description" content="Your video has been successfully converted to {{ fmt_label }} format under 8MB. Download your optimized video file.">
+  <meta property="twitter:description"
+    content="Your video has been successfully converted to {{ fmt_label }} format under 8MB. Download your optimized video file.">
   <meta property="twitter:image" content="{{ preview_url }}"> <!-- Fixed: Dynamic preview -->
   <meta property="twitter:image:alt" content="Converted {{ fmt_label }} file preview">
 
   <!-- Additional SEO Meta Tags -->
   <meta name="theme-color" content="#007AFF">
   <meta name="application-name" content="8MB Video Converter">
-  <link rel="canonical" href="https://www.telinquents.com/result">
+  <link rel="canonical" href="https://www.jackybot.xyz/result">
 
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
@@ -51,6 +56,7 @@
 
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
+
 <body>
   <div class="container">
     <h1>Your {{ fmt_label }}</h1>
@@ -59,7 +65,9 @@
     </div>
     <div class="result-actions">
       <a class="button" href="/">Convert another</a>
-      <a class="button" href="{{ output_url }}" download="converted_{{ fmt_label }}{% if format.lower() == 'av1' %}.mp4{% else %}.{{ format }}{% endif %}">Download {{ fmt_label }}</a>
+      <a class="button" href="{{ output_url }}"
+        download="converted_{{ fmt_label }}{% if format.lower() == 'av1' %}.mp4{% else %}.{{ format }}{% endif %}">Download
+        {{ fmt_label }}</a>
     </div>
     <ul class="key-info center">
       <li>Resolution: {{ params.width }}×{{ params.height }}</li>
@@ -68,4 +76,5 @@
     </ul>
   </div>
 </body>
+
 </html>
