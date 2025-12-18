@@ -59,7 +59,7 @@ export class ConversionManager {
         const box = this.el.progressBox;
         const st = data.status;
         if (st === 'queued' && lastSt !== 'queued') {
-            box.innerHTML = Utils.createLoadingContainer('Queued...');
+            box.innerHTML = Utils.createIndeterminateProgressBar('Queued...');
         } else if (st === 'running' || st === 'predict') {
             const txt = data.message || 'Processing...';
             const exist = box.querySelector('.loading-text') || box.querySelector('.upload-progress-text'); // Check for either type
