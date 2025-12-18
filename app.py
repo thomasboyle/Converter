@@ -198,6 +198,9 @@ def create_app() -> Flask:
                     job["attempt"] = info.get("attempt")
                     job["total"] = info.get("total")
                     job["message"] = info.get("message", "Converting…")
+                elif phase in ("analyze", "encode", "retry"):
+                    job["status"] = "running"
+                    job["message"] = info.get("message", "Processing...")
                 elif phase == "done":
                     job["status"] = "done"
                     job["message"] = "Conversion complete"
