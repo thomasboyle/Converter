@@ -474,41 +474,15 @@ def create_app() -> Flask:
 
     @app.route('/robots.txt')
     def robots_txt():
-        return send_from_directory(_str_base_dir, 'robots.txt', mimetype='text/plain')
+        return send_from_directory('static', 'robots.txt')
 
     @app.route('/sitemap.xml')
     def sitemap():
-        from datetime import datetime
-        current_date = datetime.now().strftime('%Y-%m-%d')
-        domain = os.environ.get('SITE_DOMAIN', 'https://www.telinquents.com')
-        pages = (
-            (f'{domain}/', '1.0', 'weekly'),
-            (f'{domain}/8mb', '0.9', 'weekly'),
-            (f'{domain}/convert-video-to-8mb', '0.8', 'weekly'),
-            (f'{domain}/make-video-smaller', '0.8', 'weekly'),
-            (f'{domain}/make-video-under-8mb', '0.8', 'weekly'),
-        )
-        url_parts = []
-        for loc, priority, changefreq in pages:
-            url_parts.append(
-                f'    <url>\n'
-                f'        <loc>{loc}</loc>\n'
-                f'        <lastmod>{current_date}</lastmod>\n'
-                f'        <changefreq>{changefreq}</changefreq>\n'
-                f'        <priority>{priority}</priority>\n'
-                f'    </url>'
-            )
-        urls = '\n'.join(url_parts)
-        xml_content = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
-            '        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n'
-            '        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9\n'
-            '        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">\n'
-            f'{urls}\n'
-            '</urlset>'
-        )
-        return xml_content, 200, {'Content-Type': 'application/xml'}
+        return send_from_directory('static', 'sitemap.xml')
+
+    @app.route('/llms.txt')
+    def llms_txt():
+        return send_from_directory('static', 'llms.txt')
 
     return app
 

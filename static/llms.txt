@@ -1,0 +1,28 @@
+# Discord Tools (Jackybot)
+
+> Free, privacy-focused online video utilities optimized for Discord users. No sign-up required.
+
+## Tools
+
+### 1. 8MB Video Compressor
+- **URL**: https://www.jackybot.xyz/8mb
+- **Purpose**: Compresses video files to under 8MB (or 25MB/50MB/100MB) to meet Discord's file size limits without Nitro.
+- **Key Features**:
+  - Supports MP4, AV1, AVIF, WebP, GIF.
+  - Client-side processing (privacy focused) or cloud acceleration.
+  - Maintains high visual quality.
+
+### 2. Clip That (Video Trimmer)
+- **URL**: https://www.jackybot.xyz/clip
+- **Purpose**: Interactive tool to trim/crop video clips for social media sharing.
+- **Key Features**:
+  - Visual timeline editor.
+  - Precise start/end time selection.
+  - Instant preview.
+
+## Usage
+The site is designed for direct end-user interaction via a web browser. API access is not currently public.
+
+## Technical Context
+- **Stack**: Python (Flask), ffmpeg, Vanilla JS.
+- **Privacy**: We prioritize user privacy. Files are processed securely and not stored permanently.
