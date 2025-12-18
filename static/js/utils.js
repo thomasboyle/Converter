@@ -243,11 +243,12 @@ export class Utils {
     }
 
     // Feature 2: Create indeterminate progress bar HTML
-    static createIndeterminateProgressBar(text) {
+    static createIndeterminateProgressBar(text, type = 'processing') {
+        const className = type === 'queue' ? 'queue' : 'indeterminate';
         return `
             <div class="upload-progress-container">
                 <div class="upload-progress-bar">
-                    <div class="upload-progress-fill indeterminate"></div>
+                    <div class="upload-progress-fill ${className}"></div>
                 </div>
                 <p class="upload-progress-text">${text}</p>
             </div>

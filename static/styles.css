@@ -1591,14 +1591,21 @@ body {
 
 .upload-progress-fill {
 	height: 100%;
-	background: linear-gradient(90deg, #0077ED, #34c759);
+	background: #34c759;
 	border-radius: 4px;
 	transition: width 0.2s ease;
 }
 
 .upload-progress-fill.indeterminate {
 	width: 100% !important;
-	background: linear-gradient(45deg, #0077ED 25%, #34c759 25%, #34c759 50%, #0077ED 50%, #0077ED 75%, #34c759 75%, #34c759 100%);
+	background: linear-gradient(45deg, #0077ED 25%, #5ac8fa 25%, #5ac8fa 50%, #0077ED 50%, #0077ED 75%, #5ac8fa 75%, #5ac8fa 100%);
+	background-size: 30px 30px;
+	animation: progress-indeterminate 1s linear infinite;
+}
+
+.upload-progress-fill.queue {
+	width: 100% !important;
+	background: linear-gradient(45deg, #ffcc00 25%, #ffe066 25%, #ffe066 50%, #ffcc00 50%, #ffcc00 75%, #ffe066 75%, #ffe066 100%);
 	background-size: 30px 30px;
 	animation: progress-indeterminate 1s linear infinite;
 }
