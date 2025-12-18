@@ -60,11 +60,13 @@ export class ConversionManager {
         const st = data.status;
         if (st === 'queued' && lastSt !== 'queued') {
             box.innerHTML = Utils.createLoadingContainer('Queued...');
-        } else if (st === 'running') {
+        } else if (st === 'running' || st === 'predict') {
             const txt = data.message || 'Processing...';
-            const exist = box.querySelector('.loading-text');
-            if (lastSt !== 'running' || !exist) {
-                box.innerHTML = Utils.createLoadingContainer(txt);
+            const exist = box.querySelector('.loading-text') || box.querySelector('.upload-progress-text'); // Check for either type
+
+            // If we are switching from queued/uploading to running, or if the container type doesn't match
+            if (lastSt !== 'running' && lastSt !== 'predict' || !exist || !exist.classList.contains('upload-progress-text')) {
+                box.innerHTML = Utils.createIndeterminateProgressBar(txt);
             } else if (exist.textContent !== txt) {
                 exist.textContent = txt;
             }

@@ -242,6 +242,18 @@ export class Utils {
         `;
     }
 
+    // Feature 2: Create indeterminate progress bar HTML
+    static createIndeterminateProgressBar(text) {
+        return `
+            <div class="upload-progress-container">
+                <div class="upload-progress-bar">
+                    <div class="upload-progress-fill indeterminate"></div>
+                </div>
+                <p class="upload-progress-text">${text}</p>
+            </div>
+        `;
+    }
+
     // Feature 9: Validate file is a video
     static isValidVideoFile(file) {
         if (!file) return { valid: false, error: 'No file selected' };
