@@ -29,12 +29,11 @@ def convert_video_to_mp4_under_size(
     min_h = max(2, (int(h * 0.5) >> 1) << 1)
 
     cmd_template = [
-        "ffmpeg", "-y", "-hwaccel", "cuda", "-hwaccel_device", "0",
-        "-c:v", "h264_cuvid", "-i", input_video_path,
+        "ffmpeg", "-y", "-i", input_video_path,
         "-vf", None,
-        "-c:v", "h264_nvenc", "-c:a", "aac",
+        "-c:v", "libx264", "-c:a", "aac",
         "-pix_fmt", "yuv420p", "-preset", "fast",
-        "-crf", None, "-b:v", "0",
+        "-crf", None,
         output_mp4_path,
     ]
 
@@ -44,8 +43,8 @@ def convert_video_to_mp4_under_size(
             if progress_cb:
                 progress_cb({"phase": "encode", "message": f"Encoding MP4... {w}x{h} @ {fps}fps, CRF {crf}"})
             cmd = cmd_template.copy()
-            cmd[11] = vf
-            cmd[21] = str(crf)
+            cmd[5] = vf
+            cmd[13] = str(crf)
             r = subprocess.run(cmd, **_SUBPROCESS_FLAGS)
             if r.returncode:
                 err = r.stderr.decode("utf-8", errors="replace") if r.stderr else ""
