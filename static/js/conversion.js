@@ -241,30 +241,6 @@ export class ConversionManager {
 
     init() {
         window.conversionManager = this;
-
-        // PASTE SUPPORT
-        document.addEventListener('paste', async (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-            for (const item of items) {
-                if (item.kind === 'file' && item.type.startsWith('video/')) {
-                    const file = item.getAsFile();
-                    this.el.fileInput.files = Utils.createFileList([file]);
-                    this.el.fileInput.dispatchEvent(new Event('change'));
-                    Utils.showToast('Video pasted from clipboard!', 'success');
-                    return;
-                } else if (item.kind === 'string' && item.type === 'text/plain') {
-                    // Check if it's a URL (future feature: download from URL)
-                    item.getAsString(s => {
-                        if (s.match(/^https?:\/\/.+/)) {
-                            Utils.showToast('URL paste supported soon!', 'info');
-                        }
-                    });
-                }
-            }
-        });
-
         setTimeout(() => {
             try { this.checkAndResumeJob(); }
             catch (e) { Utils.handleCriticalError(e, 'Resume job'); }
