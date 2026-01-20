@@ -135,6 +135,21 @@ def create_app() -> Flask:
     app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', os.urandom(24))
     app.config['MAX_CONTENT_LENGTH'] = 2147483648
 
+    @app.before_request
+    def redirect_to_canonical():
+        if request.endpoint == 'static':
+            return None
+        host = request.host.lower()
+        scheme = request.scheme.lower()
+        path = request.path
+        
+        if host.startswith('www.') or scheme == 'http':
+            canonical_url = f"https://jackybot.xyz{path}"
+            if request.query_string:
+                canonical_url += f"?{request.query_string.decode()}"
+            return redirect(canonical_url, code=301)
+        return None
+
     @app.after_request
     def add_security_headers(response):
         hdrs = response.headers
