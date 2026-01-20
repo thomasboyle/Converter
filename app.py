@@ -163,10 +163,28 @@ def create_app() -> Flask:
     def clip_page():
         return render_template('clip.html')
 
-    seo_routes = ('/convert-video-to-8mb', '/make-video-smaller', '/make-video-under-8mb')
+    seo_routes = (
+        '/compress-video',
+        '/compress-video-discord',
+        '/compress-video-for-discord',
+        '/video-compressor',
+        '/discord-video-compressor',
+        '/compress-video-online',
+        '/reduce-video-size',
+        '/video-file-compressor',
+        '/trim-video',
+        '/trim-video-discord',
+        '/video-trimmer',
+        '/clip-video',
+        '/cut-video'
+    )
     for route in seo_routes:
-        app.add_url_rule(route, f'seo_redirect_{route[1:]}', 
-                        lambda: redirect(url_for('convert_page'), code=301), methods=['GET'])
+        if 'trim' in route or 'clip' in route or 'cut' in route:
+            target = url_for('clip_page')
+        else:
+            target = url_for('convert_page')
+        app.add_url_rule(route, f'seo_redirect_{route.replace("/", "_").replace("-", "_")}', 
+                        lambda t=target: redirect(t, code=301), methods=['GET'])
 
     def allowed_file(filename: str) -> bool:
         idx = filename.rfind('.')
