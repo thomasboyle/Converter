@@ -139,16 +139,29 @@ def create_app() -> Flask:
     def redirect_to_canonical():
         if request.endpoint == 'static':
             return None
+        
         host = request.host.lower()
         scheme = request.scheme.lower()
-        path = request.path
         
-        if host.startswith('www.') or scheme == 'http':
-            canonical_url = f"https://jackybot.xyz{path}"
-            if request.query_string:
-                canonical_url += f"?{request.query_string.decode()}"
-            return redirect(canonical_url, code=301)
-        return None
+        forwarded_host = request.headers.get('X-Forwarded-Host', '').lower()
+        forwarded_proto = request.headers.get('X-Forwarded-Proto', '').lower()
+        
+        if forwarded_host:
+            host = forwarded_host
+        if forwarded_proto:
+            scheme = forwarded_proto
+        
+        canonical_host = 'jackybot.xyz'
+        canonical_scheme = 'https'
+        
+        if host == canonical_host and scheme == canonical_scheme:
+            return None
+        
+        path = request.path
+        canonical_url = f"{canonical_scheme}://{canonical_host}{path}"
+        if request.query_string:
+            canonical_url += f"?{request.query_string.decode()}"
+        return redirect(canonical_url, code=301)
 
     @app.after_request
     def add_security_headers(response):
