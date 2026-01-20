@@ -140,19 +140,21 @@ def create_app() -> Flask:
         if request.endpoint == 'static':
             return None
         
-        host = request.host.lower()
-        scheme = request.scheme.lower()
-        
-        forwarded_host = request.headers.get('X-Forwarded-Host', '').lower()
-        forwarded_proto = request.headers.get('X-Forwarded-Proto', '').lower()
-        
-        if forwarded_host:
-            host = forwarded_host
-        if forwarded_proto:
-            scheme = forwarded_proto
+        if os.environ.get('DISABLE_CANONICAL_REDIRECT', '').lower() == 'true':
+            return None
         
         canonical_host = 'jackybot.xyz'
         canonical_scheme = 'https'
+        
+        forwarded_host = request.headers.get('X-Forwarded-Host', '').strip().lower()
+        forwarded_proto = request.headers.get('X-Forwarded-Proto', '').strip().lower()
+        
+        if forwarded_host:
+            host = forwarded_host.split(':')[0].strip()
+            scheme = forwarded_proto.strip() if forwarded_proto else canonical_scheme
+        else:
+            host = request.host.lower().split(':')[0].strip()
+            scheme = request.scheme.lower().strip()
         
         if host == canonical_host and scheme == canonical_scheme:
             return None
@@ -161,6 +163,7 @@ def create_app() -> Flask:
         canonical_url = f"{canonical_scheme}://{canonical_host}{path}"
         if request.query_string:
             canonical_url += f"?{request.query_string.decode()}"
+        
         return redirect(canonical_url, code=301)
 
     @app.after_request
