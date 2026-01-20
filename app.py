@@ -180,11 +180,11 @@ def create_app() -> Flask:
     )
     for route in seo_routes:
         if 'trim' in route or 'clip' in route or 'cut' in route:
-            target = url_for('clip_page')
+            target_url = '/clip'
         else:
-            target = url_for('convert_page')
+            target_url = '/8mb'
         app.add_url_rule(route, f'seo_redirect_{route.replace("/", "_").replace("-", "_")}', 
-                        lambda t=target: redirect(t, code=301), methods=['GET'])
+                        lambda url=target_url: redirect(url, code=301), methods=['GET'])
 
     def allowed_file(filename: str) -> bool:
         idx = filename.rfind('.')
