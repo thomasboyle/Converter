@@ -31,67 +31,20 @@ body {
 	overflow-x: visible;
 }
 
-/* SEO Content Section - Visible and styled for both users and search engines */
+/* SEO Content Section - Hidden from users but accessible to search engines */
 .seo-content {
-	display: block;
-	max-width: 800px;
-	margin: 48px auto;
-	padding: 32px;
-	text-align: left;
-	line-height: 1.8;
-	color: #1d1d1f;
-	background: #fafafa;
-	border-radius: 12px;
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	visibility: hidden;
 }
 
-.seo-content h2 {
-	font-size: 28px;
-	font-weight: 600;
-	color: #1d1d1f;
-	margin-bottom: 20px;
-	margin-top: 0;
-}
-
-.seo-content h3 {
-	font-size: 22px;
-	font-weight: 600;
-	color: #1d1d1f;
-	margin-top: 32px;
-	margin-bottom: 16px;
-}
-
-.seo-content p {
-	font-size: 16px;
-	color: #424245;
-	line-height: 1.8;
-	margin-bottom: 16px;
-}
-
-.seo-content ul,
-.seo-content ol {
-	margin: 16px 0;
-	padding-left: 32px;
-}
-
-.seo-content li {
-	margin-bottom: 12px;
-	color: #424245;
-	line-height: 1.7;
-}
-
-.seo-content strong {
-	color: #1d1d1f;
-	font-weight: 600;
-}
-
-.seo-content a {
-	color: #007AFF;
-	text-decoration: none;
-}
-
-.seo-content a:hover {
-	text-decoration: underline;
-}
+/* Alternative: Use display: none - also works for SEO but less semantic */
+/* .seo-content {
+	display: none;
+} */
 
 /* SEO Sections for Index Page - Hidden from users but available for search engines */
 .seo-sections {
