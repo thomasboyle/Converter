@@ -1,13 +1,64 @@
-import subprocess
-import os
-from typing import Dict, Tuple, Optional, Callable
+from typing import Callable, Dict, Optional, Sequence, Tuple
 
-from .encode_estimations import get_video_info, calculate_target_resolution, ConversionError
+from .encode_estimations import ConversionError
+from .ffmpeg_av1 import available_av1_encoder
+from .ffmpeg_subprocess import svtav1_preset
+from .size_encode import encode_video_under_size
 
-_SUBPROCESS_FLAGS = {"stdout": subprocess.PIPE, "stderr": subprocess.PIPE, "text": False}
 _CRF_CANDIDATES = (28, 32, 36, 40, 44, 48, 52)
-_SCALE_STEP = 0.86
-_MB_DIV = 1048576.0
+
+
+def _build_avif_cmd(
+    input_video_path: str,
+    output_avif_path: str,
+    vf: str,
+    crf: int,
+    encoder: str,
+) -> Sequence[str]:
+    preset = svtav1_preset()
+    if encoder == "libsvtav1":
+        return [
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_video_path,
+            "-vf",
+            vf,
+            "-an",
+            "-c:v",
+            "libsvtav1",
+            "-pix_fmt",
+            "yuv420p10le",
+            "-preset",
+            preset,
+            "-crf",
+            str(crf),
+            "-b:v",
+            "0",
+            output_avif_path,
+        ]
+    if encoder == "libaom-av1":
+        return [
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_video_path,
+            "-vf",
+            vf,
+            "-an",
+            "-c:v",
+            "libaom-av1",
+            "-pix_fmt",
+            "yuv420p10le",
+            "-cpu-used",
+            "4",
+            "-crf",
+            str(crf),
+            "-b:v",
+            "0",
+            output_avif_path,
+        ]
+    raise ConversionError(f"Unsupported AV1 encoder: {encoder}")
 
 
 def convert_video_to_avif_under_size(
@@ -16,53 +67,24 @@ def convert_video_to_avif_under_size(
     max_bytes: int,
     fps: float = 12,
     progress_cb: Optional[Callable] = None,
+    cancel_check: Optional[Callable[[], bool]] = None,
 ) -> Tuple[str, Dict]:
-    if progress_cb:
-        progress_cb({"phase": "analyze", "message": "Analyzing video..."})
+    encoder = available_av1_encoder()
 
-    orig_w, orig_h, duration = get_video_info(input_video_path)
-    if duration <= 0:
-        raise ConversionError("Could not determine video duration")
+    def build_cmd(inp: str, out: str, vf: str, crf: int) -> Sequence[str]:
+        return _build_avif_cmd(inp, out, vf, crf, encoder)
 
-    w, h = calculate_target_resolution(orig_w, orig_h, max_bytes, duration, fps, "avif")
-    min_w = max(2, (int(w * 0.5) >> 1) << 1)
-    min_h = max(2, (int(h * 0.5) >> 1) << 1)
-
-    cmd_template = [
-        "ffmpeg", "-y", "-i", input_video_path,
-        "-vf", None, "-an",
-        "-c:v", "libsvtav1", "-pix_fmt", "yuv420p10le",
-        "-preset", "8", "-crf", None, "-b:v", "0",
+    return encode_video_under_size(
+        input_video_path,
         output_avif_path,
-    ]
-
-    while True:
-        vf = f"fps={fps},scale={w}:{h}:flags=lanczos"
-        for crf in _CRF_CANDIDATES:
-            if progress_cb:
-                progress_cb({"phase": "encode", "message": f"Encoding AVIF... {w}x{h} @ {fps}fps, CRF {crf}"})
-            cmd = cmd_template.copy()
-            cmd[5] = vf
-            cmd[14] = str(crf)
-            r = subprocess.run(cmd, **_SUBPROCESS_FLAGS)
-            if r.returncode:
-                err = r.stderr.decode("utf-8", errors="replace") if r.stderr else ""
-                raise ConversionError(f"AVIF encoding failed: {''.join(err.strip().splitlines()[-15:]) or 'Unknown error'}")
-            sz = os.path.getsize(output_avif_path)
-            if sz <= max_bytes:
-                params = {
-                    "fps": fps, "width": w, "height": h, "crf": crf,
-                    "output_size_bytes": sz, "output_size_mb": round(sz / _MB_DIV, 3),
-                    "utilization": round(sz * 100.0 / max_bytes, 1),
-                }
-                if progress_cb:
-                    progress_cb({"phase": "done", **params})
-                return output_avif_path, params
-
-        if progress_cb:
-            progress_cb({"phase": "retry", "message": "Retrying with smaller size..."})
-        nw = max(2, (int(w * _SCALE_STEP) >> 1) << 1)
-        nh = max(2, (int(h * _SCALE_STEP) >> 1) << 1)
-        if nw < min_w or nh < min_h:
-            raise ConversionError("Could not reach target size; try a shorter clip or increase size limit.")
-        w, h = nw, nh
+        max_bytes,
+        fps,
+        "avif",
+        _CRF_CANDIDATES,
+        "crf",
+        build_cmd,
+        f"Encoding AVIF ({encoder})",
+        progress_cb=progress_cb,
+        cancel_check=cancel_check,
+        extra_result={"encoder": encoder},
+    )

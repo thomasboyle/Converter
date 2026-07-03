@@ -1,48 +1,64 @@
-import subprocess
-import os
 import math
+import os
 import tempfile
-from typing import Dict, Tuple, Optional, Callable
+from typing import Callable, Dict, Optional, Tuple
 
 from .encode_estimations import get_video_info, calculate_target_resolution, ConversionError
+from .ffmpeg_subprocess import run_ffmpeg
 
-_SUBPROCESS_FLAGS = {"stdout": subprocess.PIPE, "stderr": subprocess.PIPE, "text": False}
 _MB_DIV = 1048576.0
 
 
-def _run_encode(input_path: str, palette_path: str, output_path: str, fps: float, w: int, h: int) -> subprocess.CompletedProcess:
+def _run_encode(
+    input_path: str,
+    palette_path: str,
+    output_path: str,
+    fps: float,
+    w: int,
+    h: int,
+    cancel_check: Optional[Callable[[], bool]],
+) -> None:
     vf = f"fps={fps},scale={w}:{h}:flags=lanczos"
     cmd = [
         "ffmpeg", "-y", "-i", input_path, "-i", palette_path,
         "-filter_complex", f"{vf}[x];[x][1:v]paletteuse",
         output_path,
     ]
-    r = subprocess.run(cmd, **_SUBPROCESS_FLAGS)
-    if r.returncode:
+    try:
+        run_ffmpeg(cmd, cancel_check=cancel_check, error_prefix="GIF encoding failed")
+    except ConversionError:
         alt_cmd = [
             "ffmpeg", "-y", "-i", input_path,
             "-filter_complex", f"[0:v]{vf},split[a][b];[a]palettegen[p];[b][p]paletteuse",
             output_path,
         ]
-        r = subprocess.run(alt_cmd, **_SUBPROCESS_FLAGS)
-    return r
+        run_ffmpeg(alt_cmd, cancel_check=cancel_check, error_prefix="GIF encoding failed")
 
 
-def _gen_palette(input_path: str, palette_path: str, fps: float, w: int, h: int) -> subprocess.CompletedProcess:
+def _gen_palette(
+    input_path: str,
+    palette_path: str,
+    fps: float,
+    w: int,
+    h: int,
+    cancel_check: Optional[Callable[[], bool]],
+) -> None:
     cmd = ["ffmpeg", "-y", "-i", input_path, "-vf", f"fps={fps},scale={w}:{h}:flags=lanczos,palettegen", palette_path]
-    return subprocess.run(cmd, **_SUBPROCESS_FLAGS)
+    run_ffmpeg(cmd, cancel_check=cancel_check, error_prefix="Palette generation failed")
 
 
-def _encode_pass(input_path: str, output_path: str, fps: float, w: int, h: int, tmp_dir: str) -> int:
+def _encode_pass(
+    input_path: str,
+    output_path: str,
+    fps: float,
+    w: int,
+    h: int,
+    tmp_dir: str,
+    cancel_check: Optional[Callable[[], bool]],
+) -> int:
     palette_path = os.path.join(tmp_dir, "palette.png")
-    r = _gen_palette(input_path, palette_path, fps, w, h)
-    if r.returncode:
-        err = r.stderr.decode("utf-8", errors="replace") if r.stderr else ""
-        raise ConversionError(f"Palette generation failed: {''.join(err.strip().splitlines()[-15:]) or 'Unknown error'}")
-    r = _run_encode(input_path, palette_path, output_path, fps, w, h)
-    if r.returncode:
-        err = r.stderr.decode("utf-8", errors="replace") if r.stderr else ""
-        raise ConversionError(f"GIF encoding failed: {''.join(err.strip().splitlines()[-15:]) or 'Unknown error'}")
+    _gen_palette(input_path, palette_path, fps, w, h, cancel_check)
+    _run_encode(input_path, palette_path, output_path, fps, w, h, cancel_check)
     return os.path.getsize(output_path)
 
 
@@ -52,6 +68,7 @@ def convert_video_to_gif_simple(
     max_bytes: int,
     fps: float = 12,
     progress_cb: Optional[Callable] = None,
+    cancel_check: Optional[Callable[[], bool]] = None,
 ) -> Tuple[str, Dict]:
     if progress_cb:
         progress_cb({"phase": "analyze", "message": "Analyzing video..."})
@@ -69,7 +86,7 @@ def convert_video_to_gif_simple(
             progress_cb({"phase": "palette", "message": "Generating palette..."})
         if progress_cb:
             progress_cb({"phase": "encode", "message": "Encoding GIF..."})
-        sz = _encode_pass(input_video_path, output_gif_path, fps, w, h, tmp_dir)
+        sz = _encode_pass(input_video_path, output_gif_path, fps, w, h, tmp_dir, cancel_check)
 
     if sz > max_bytes:
         if progress_cb:
@@ -78,7 +95,7 @@ def convert_video_to_gif_simple(
         w = max(2, (int(w * sf) >> 1) << 1)
         h = max(2, (int(h * sf) >> 1) << 1)
         with tempfile.TemporaryDirectory() as tmp_dir:
-            sz = _encode_pass(input_video_path, output_gif_path, fps, w, h, tmp_dir)
+            sz = _encode_pass(input_video_path, output_gif_path, fps, w, h, tmp_dir, cancel_check)
 
     params = {
         "fps": fps, "width": w, "height": h,
@@ -95,5 +112,8 @@ def convert_video_to_gif_under_size(
     output_gif_path: str,
     max_bytes: int,
     progress_cb: Optional[Callable] = None,
+    cancel_check: Optional[Callable[[], bool]] = None,
 ) -> Tuple[str, Dict]:
-    return convert_video_to_gif_simple(input_video_path, output_gif_path, max_bytes, 12, progress_cb)
+    return convert_video_to_gif_simple(
+        input_video_path, output_gif_path, max_bytes, 12, progress_cb, cancel_check
+    )

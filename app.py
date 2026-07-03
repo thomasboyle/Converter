@@ -18,14 +18,24 @@ from conversions.converter import (
 )
 from conversions.clip_conversion import (
     clip_video_to_timestamps,
-    clip_video_to_timestamps_with_reencode,
     ConversionError as ClipConversionError,
 )
 
 BASE_DIR = pathlib.Path(__file__).parent.resolve()
-UPLOAD_DIR = BASE_DIR / 'uploads'
-OUTPUT_DIR = BASE_DIR / 'gifs'
+
+
+def _storage_base() -> pathlib.Path:
+    raw = os.environ.get("CONVERTER_USER_DATA")
+    if raw:
+        return pathlib.Path(raw)
+    return BASE_DIR
+
+
+_storage = _storage_base()
+UPLOAD_DIR = _storage / 'uploads'
+OUTPUT_DIR = _storage / 'gifs'
 MAX_GIF_BYTES = 8388608
+DEFAULT_MAX_BYTES = MAX_GIF_BYTES
 JOB_CLEANUP_AGE_SECONDS = 3600
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -118,6 +128,26 @@ def _prepare_output_filename(user_filename: Optional[str], ext: str) -> str:
     return safe_filename
 
 
+def _parse_max_bytes(form: Any) -> int:
+    raw = form.get("max_size_mb")
+    if raw is None or raw == "":
+        return DEFAULT_MAX_BYTES
+    try:
+        mb = int(raw)
+        return max(1, min(512, mb)) * 1024 * 1024
+    except (ValueError, TypeError):
+        return DEFAULT_MAX_BYTES
+
+
+def _make_cancel_check(job_id: str) -> Callable[[], bool]:
+    def cancel_check() -> bool:
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            return bool(job and job.get("status") == "cancelled")
+
+    return cancel_check
+
+
 def _update_job_status(job_id: str, updates: Dict[str, Any]) -> None:
     with JOBS_LOCK:
         job = JOBS.get(job_id)
@@ -130,61 +160,67 @@ def _handle_conversion_error(job_id: str, exc: Exception) -> None:
     _update_job_status(job_id, {"status": "error", "message": error_msg, "error": error_msg})
 
 
-def create_app() -> Flask:
+def create_app(desktop: bool = False, spa_dist: Optional[pathlib.Path] = None) -> Flask:
     app = Flask(__name__)
     app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', os.urandom(24))
     app.config['MAX_CONTENT_LENGTH'] = 2147483648
+    serve_spa = desktop and spa_dist is not None and spa_dist.is_dir()
 
     @app.after_request
     def add_security_headers(response):
         hdrs = response.headers
-        for k, v in SECURITY_HEADERS:
-            hdrs[k] = v
+        if desktop:
+            hdrs['X-Content-Type-Options'] = 'nosniff'
+        else:
+            for k, v in SECURITY_HEADERS:
+                hdrs[k] = v
         return response
 
-    @app.route('/', methods=['GET', 'POST'])
-    def index():
-        if request.method == 'POST':
-            if request.form or request.files:
-                app.logger.warning(
-                    f"Unexpected POST to root from {request.remote_addr}. "
-                    f"Form: {list(request.form.keys())}, Files: {list(request.files.keys())}"
-                )
-            if 'video' in request.files:
-                return jsonify({"error": "Invalid endpoint. Please use the correct conversion endpoint."}), 400
-            return redirect(url_for('index'), code=302)
-        return render_template('index.html')
+    if not desktop:
 
-    @app.route('/8mb', methods=['GET'])
-    def convert_page():
-        return render_template('8mb.html')
+        @app.route('/', methods=['GET', 'POST'])
+        def index():
+            if request.method == 'POST':
+                if request.form or request.files:
+                    app.logger.warning(
+                        f"Unexpected POST to root from {request.remote_addr}. "
+                        f"Form: {list(request.form.keys())}, Files: {list(request.files.keys())}"
+                    )
+                if 'video' in request.files:
+                    return jsonify({"error": "Invalid endpoint. Please use the correct conversion endpoint."}), 400
+                return redirect(url_for('index'), code=302)
+            return render_template('index.html')
 
-    @app.route('/clip', methods=['GET'])
-    def clip_page():
-        return render_template('clip.html')
+        @app.route('/8mb', methods=['GET'])
+        def convert_page():
+            return render_template('8mb.html')
 
-    seo_routes = (
-        '/compress-video',
-        '/compress-video-discord',
-        '/compress-video-for-discord',
-        '/video-compressor',
-        '/discord-video-compressor',
-        '/compress-video-online',
-        '/reduce-video-size',
-        '/video-file-compressor',
-        '/trim-video',
-        '/trim-video-discord',
-        '/video-trimmer',
-        '/clip-video',
-        '/cut-video'
-    )
-    for route in seo_routes:
-        if 'trim' in route or 'clip' in route or 'cut' in route:
-            target_url = '/clip'
-        else:
-            target_url = '/8mb'
-        app.add_url_rule(route, f'seo_redirect_{route.replace("/", "_").replace("-", "_")}', 
-                        lambda url=target_url: redirect(url, code=301), methods=['GET'])
+        @app.route('/clip', methods=['GET'])
+        def clip_page():
+            return render_template('clip.html')
+
+        seo_routes = (
+            '/compress-video',
+            '/compress-video-discord',
+            '/compress-video-for-discord',
+            '/video-compressor',
+            '/discord-video-compressor',
+            '/compress-video-online',
+            '/reduce-video-size',
+            '/video-file-compressor',
+            '/trim-video',
+            '/trim-video-discord',
+            '/video-trimmer',
+            '/clip-video',
+            '/cut-video'
+        )
+        for route in seo_routes:
+            if 'trim' in route or 'clip' in route or 'cut' in route:
+                target_url = '/clip'
+            else:
+                target_url = '/8mb'
+            app.add_url_rule(route, f'seo_redirect_{route.replace("/", "_").replace("-", "_")}',
+                            lambda url=target_url: redirect(url, code=301), methods=['GET'])
 
     def allowed_file(filename: str) -> bool:
         idx = filename.rfind('.')
@@ -216,7 +252,7 @@ def create_app() -> Flask:
                     job["attempt"] = info.get("attempt")
                     job["total"] = info.get("total")
                     job["message"] = info.get("message", "Converting…")
-                elif phase in ("analyze", "encode", "retry"):
+                elif phase in ("analyze", "encode", "retry", "palette", "settings"):
                     job["status"] = "running"
                     job["message"] = info.get("message", "Processing...")
                 elif phase == "done":
@@ -225,13 +261,14 @@ def create_app() -> Flask:
                     job["params"] = {k: v for k, v in info.items() if k != "phase"}
         return progress_cb
 
-    def _background_convert(job_id: str, input_path: pathlib.Path, output_path: pathlib.Path, fmt: str) -> None:
+    def _background_convert(job_id: str, input_path: pathlib.Path, output_path: pathlib.Path, fmt: str, max_bytes: int) -> None:
         try:
             result_path, params = CONVERSION_FUNCTIONS[fmt](
                 str(input_path),
                 str(output_path),
-                MAX_GIF_BYTES,
+                max_bytes,
                 progress_cb=_make_progress_callback(job_id),
+                cancel_check=_make_cancel_check(job_id),
             )
             out_name = output_path.name
             cache_buster = int(time.time() * 1000)
@@ -273,22 +310,14 @@ def create_app() -> Flask:
             in_str = str(input_path)
             out_str = str(output_path)
             progress_cb = _make_clip_progress_callback(job_id, output_path)
-            try:
-                result_path, params = clip_video_to_timestamps(
-                    input_video_path=in_str,
-                    output_video_path=out_str,
-                    start_time=start_time,
-                    end_time=end_time,
-                    progress_cb=progress_cb,
-                )
-            except ClipConversionError:
-                result_path, params = clip_video_to_timestamps_with_reencode(
-                    input_video_path=in_str,
-                    output_video_path=out_str,
-                    start_time=start_time,
-                    end_time=end_time,
-                    progress_cb=progress_cb,
-                )
+            result_path, params = clip_video_to_timestamps(
+                input_video_path=in_str,
+                output_video_path=out_str,
+                start_time=start_time,
+                end_time=end_time,
+                progress_cb=progress_cb,
+                cancel_check=_make_cancel_check(job_id),
+            )
             out_name = output_path.name
             cache_buster = int(time.time() * 1000)
             _update_job_status(job_id, {
@@ -320,6 +349,7 @@ def create_app() -> Flask:
         ext = _get_format_extension(fmt)
         output_name = _prepare_output_filename(form.get('filename'), ext)
         output_path = OUTPUT_DIR / output_name
+        max_bytes = _parse_max_bytes(form)
         ts = time.time()
         with JOBS_LOCK:
             JOBS[upload_id] = {
@@ -330,7 +360,7 @@ def create_app() -> Flask:
                 "format": fmt,
                 "timestamp": ts
             }
-        EXECUTOR.submit(_background_convert, upload_id, input_path, output_path, fmt)
+        EXECUTOR.submit(_background_convert, upload_id, input_path, output_path, fmt, max_bytes)
         _cleanup_old_jobs()
         return jsonify({"job_id": upload_id, "format": fmt})
 
@@ -484,26 +514,49 @@ def create_app() -> Flask:
     def get_gif(filename: str):
         response = send_from_directory(_str_output_dir, filename, as_attachment=False)
         hdrs = response.headers
-        hdrs['Cache-Control'] = 'public, max-age=31536000, immutable'
+        if desktop:
+            hdrs['Cache-Control'] = 'public, max-age=60'
+        else:
+            hdrs['Cache-Control'] = 'public, max-age=31536000, immutable'
         hdrs.pop('Pragma', None)
         hdrs.pop('Expires', None)
         return response
 
-    @app.route('/images/<path:filename>')
-    def get_image(filename: str):
-        return send_from_directory(_str_images_dir, filename, as_attachment=False)
+    if not desktop:
 
-    @app.route('/robots.txt')
-    def robots_txt():
-        return send_from_directory('static', 'robots.txt')
+        @app.route('/images/<path:filename>')
+        def get_image(filename: str):
+            return send_from_directory(_str_images_dir, filename, as_attachment=False)
 
-    @app.route('/sitemap.xml')
-    def sitemap():
-        return send_from_directory('static', 'sitemap.xml')
+        @app.route('/robots.txt')
+        def robots_txt():
+            return send_from_directory('static', 'robots.txt')
 
-    @app.route('/llms.txt')
-    def llms_txt():
-        return send_from_directory('static', 'llms.txt')
+        @app.route('/sitemap.xml')
+        def sitemap():
+            return send_from_directory('static', 'sitemap.xml')
+
+        @app.route('/llms.txt')
+        def llms_txt():
+            return send_from_directory('static', 'llms.txt')
+
+    if serve_spa:
+        dist = spa_dist
+
+        @app.route('/assets/<path:subpath>')
+        def vite_assets(subpath: str):
+            return send_from_directory(dist / 'assets', subpath)
+
+        @app.route('/', methods=['GET'])
+        def spa_index():
+            return send_from_directory(dist, 'index.html')
+
+        @app.route('/<path:path>', methods=['GET'])
+        def spa_catchall(path: str):
+            direct = dist / path
+            if direct.is_file():
+                return send_from_directory(dist, path)
+            return send_from_directory(dist, 'index.html')
 
     return app
 

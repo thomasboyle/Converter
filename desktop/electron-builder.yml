@@ -1,0 +1,29 @@
+directories:
+  output: release
+  buildResources: build
+appId: com.converter.desktop
+productName: Converter
+files:
+  - filter:
+      - electron/**/*
+      - package.json
+extraResources:
+  - from: dist/converter-server
+    to: converter-server
+  - from: resources/ffmpeg-bin
+    to: ffmpeg-bin
+win:
+  signAndEditExecutable: false
+  compression: maximum
+  electronLanguages:
+    - en-US
+  target:
+    - target: nsis
+      arch:
+        - x64
+mac:
+  electronLanguages:
+    - en-US
+  target:
+    - dmg
+  category: public.app-category.utilities

@@ -1,10 +1,9 @@
-import subprocess
 import os
-from typing import Dict, Tuple, Optional, Callable
+from typing import Callable, Dict, Optional, Tuple
 
 from .encode_estimations import get_video_info, ConversionError
+from .ffmpeg_subprocess import run_ffmpeg, x264_preset
 
-_SUBPROCESS_FLAGS = {"stdout": subprocess.PIPE, "stderr": subprocess.PIPE, "text": False}
 _MB_DIV = 1048576.0
 _MOV_EXT = ".mov"
 
@@ -47,7 +46,15 @@ def clip_video_to_timestamps(
     start_time: float,
     end_time: float,
     progress_cb: Optional[Callable] = None,
+    cancel_check: Optional[Callable[[], bool]] = None,
 ) -> Tuple[str, Dict]:
+    """
+    Clip video to [start_time, end_time] using H.264/AAC re-encode.
+
+    Stream copy (-c copy) was removed: it only cuts on keyframes, which causes
+    frozen or wrong frames at the start of the output. Re-encoding decodes
+    from exact timestamps and produces a clean clip.
+    """
     if progress_cb:
         progress_cb({"phase": "analyze", "message": "Analyzing video..."})
 
@@ -64,34 +71,34 @@ def clip_video_to_timestamps(
         raise ConversionError("Clip duration must be at least 0.1 seconds")
 
     if progress_cb:
-        progress_cb({"phase": "clip", "message": "Clipping video..."})
+        progress_cb({"phase": "clip", "message": "Clipping video (re-encoding)..."})
 
+    is_mov = input_video_path.lower().endswith(_MOV_EXT)
+    # -ss after -i: decode from exact times (no keyframe-only freeze at start)
     cmd = [
         "ffmpeg", "-y", "-i", input_video_path,
         "-ss", str(start_time), "-t", str(clip_dur),
-        "-c", "copy", "-avoid_negative_ts", "make_zero",
+        "-c:v", "libx264", "-c:a", "aac",
+        "-preset", x264_preset(), "-crf", "23",
+        "-pix_fmt", "yuv420p", "-movflags", "+faststart",
         output_video_path,
     ]
-    r = subprocess.run(cmd, **_SUBPROCESS_FLAGS)
-    if r.returncode:
-        err = r.stderr.decode("utf-8", errors="replace") if r.stderr else ""
-        is_mov = input_video_path.lower().endswith(_MOV_EXT)
-        raise ConversionError(_get_error_msg(err, input_video_path, is_mov))
+    run_ffmpeg(
+        cmd,
+        cancel_check=cancel_check,
+        format_error=lambda err: _get_error_msg(err, input_video_path, is_mov, is_reencode=True),
+    )
 
     if not os.path.exists(output_video_path):
         raise ConversionError("Output file was not created")
 
     sz = os.path.getsize(output_video_path)
-    try:
-        out_w, out_h, out_dur = get_video_info(output_video_path)
-    except Exception:
-        out_w, out_h, out_dur = orig_w, orig_h, clip_dur
-
     params = {
         "original_duration": duration, "original_width": orig_w, "original_height": orig_h,
         "clip_start_time": start_time, "clip_end_time": end_time, "clip_duration": clip_dur,
-        "output_width": out_w, "output_height": out_h, "output_duration": out_dur,
+        "output_width": orig_w, "output_height": orig_h, "output_duration": clip_dur,
         "output_size_bytes": sz, "output_size_mb": round(sz / _MB_DIV, 3),
+        "reencoded": True,
     }
     if progress_cb:
         progress_cb({"phase": "done", **params})
@@ -104,55 +111,9 @@ def clip_video_to_timestamps_with_reencode(
     start_time: float,
     end_time: float,
     progress_cb: Optional[Callable] = None,
+    cancel_check: Optional[Callable[[], bool]] = None,
 ) -> Tuple[str, Dict]:
-    if progress_cb:
-        progress_cb({"phase": "analyze", "message": "Analyzing video for re-encoding..."})
-
-    orig_w, orig_h, duration = get_video_info(input_video_path)
-    if duration <= 0:
-        raise ConversionError("Could not determine video duration")
-
-    start_time = max(0.0, start_time)
-    end_time = min(duration, end_time)
-    if start_time >= end_time:
-        raise ConversionError("Start time must be before end time")
-    clip_dur = end_time - start_time
-    if clip_dur < 0.1:
-        raise ConversionError("Clip duration must be at least 0.1 seconds")
-
-    if progress_cb:
-        progress_cb({"phase": "clip", "message": "Re-encoding and clipping video..."})
-
-    cmd = [
-        "ffmpeg", "-y", "-i", input_video_path,
-        "-ss", str(start_time), "-t", str(clip_dur),
-        "-c:v", "libx264", "-c:a", "aac",
-        "-preset", "fast", "-crf", "23",
-        "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-        output_video_path,
-    ]
-    r = subprocess.run(cmd, **_SUBPROCESS_FLAGS)
-    if r.returncode:
-        err = r.stderr.decode("utf-8", errors="replace") if r.stderr else ""
-        is_mov = input_video_path.lower().endswith(_MOV_EXT)
-        raise ConversionError(_get_error_msg(err, input_video_path, is_mov, is_reencode=True))
-
-    if not os.path.exists(output_video_path):
-        raise ConversionError("Output file was not created")
-
-    sz = os.path.getsize(output_video_path)
-    try:
-        out_w, out_h, out_dur = get_video_info(output_video_path)
-    except Exception:
-        out_w, out_h, out_dur = orig_w, orig_h, clip_dur
-
-    params = {
-        "original_duration": duration, "original_width": orig_w, "original_height": orig_h,
-        "clip_start_time": start_time, "clip_end_time": end_time, "clip_duration": clip_dur,
-        "output_width": out_w, "output_height": out_h, "output_duration": out_dur,
-        "output_size_bytes": sz, "output_size_mb": round(sz / _MB_DIV, 3),
-        "reencoded": True,
-    }
-    if progress_cb:
-        progress_cb({"phase": "done", **params})
-    return output_video_path, params
+    """Alias for clip_video_to_timestamps (always re-encodes)."""
+    return clip_video_to_timestamps(
+        input_video_path, output_video_path, start_time, end_time, progress_cb, cancel_check
+    )

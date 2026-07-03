@@ -1,9 +1,10 @@
-import subprocess
 import json
 import math
 from typing import Tuple
 
-_SUBPROCESS_FLAGS = {"stdout": subprocess.PIPE, "stderr": subprocess.PIPE, "text": False}
+from .ffmpeg_subprocess import run_ffprobe
+from .subprocess_win import win_hide_console_kwargs
+
 _ERROR_MAP = (
     ("No such file or directory", "Video file not found or inaccessible: {}"),
     ("Invalid data found when processing input", "Corrupted or invalid video file. The file may be damaged: {}"),
@@ -19,71 +20,77 @@ class ConversionError(Exception):
     __slots__ = ()
 
 
+def _duration_from_stream(stream: dict) -> float:
+    raw = stream.get("duration")
+    if raw is not None:
+        try:
+            d = float(raw)
+            if d > 0:
+                return d
+        except (TypeError, ValueError):
+            pass
+    nb, rfr = stream.get("nb_frames"), stream.get("r_frame_rate")
+    if nb and rfr:
+        try:
+            num, den = map(int, str(rfr).split("/"))
+            if den:
+                d = float(nb) * den / num
+                if d > 0:
+                    return d
+        except (ValueError, ZeroDivisionError):
+            pass
+    return 0.0
+
+
 def get_video_info(path: str) -> Tuple[int, int, float]:
-    cmd_base = ["ffprobe", "-v", "error", "-of", "json", path]
-    result = subprocess.run(
-        cmd_base[:3] + ["-select_streams", "v:0", "-show_entries", "stream=width,height,duration"] + cmd_base[3:],
-        **_SUBPROCESS_FLAGS
+    result = run_ffprobe(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-of",
+            "json",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height,duration,nb_frames,r_frame_rate",
+            "-show_entries",
+            "format=duration",
+            path,
+        ]
     )
-    if result.returncode == 0 and result.stdout:
-        info = json.loads(result.stdout)
-        streams = info.get("streams")
-        if streams:
-            s = streams[0]
-            w, h = int(s["width"]), int(s["height"])
-            d = float(s.get("duration", 0))
-            if d > 0:
-                return w, h, d
-
-    result = subprocess.run(
-        cmd_base[:3] + ["-show_entries", "format=duration"] + cmd_base[3:],
-        **_SUBPROCESS_FLAGS
-    )
-    if result.returncode == 0 and result.stdout:
-        info = json.loads(result.stdout)
-        fmt = info.get("format")
-        if fmt:
-            d = float(fmt.get("duration", 0))
-            if d > 0:
-                r2 = subprocess.run(
-                    cmd_base[:3] + ["-select_streams", "v:0", "-show_entries", "stream=width,height"] + cmd_base[3:],
-                    **_SUBPROCESS_FLAGS
-                )
-                if r2.returncode == 0 and r2.stdout:
-                    si = json.loads(r2.stdout)
-                    ss = si.get("streams")
-                    if ss:
-                        return int(ss[0]["width"]), int(ss[0]["height"]), d
-
-    result = subprocess.run(
-        cmd_base[:3] + ["-select_streams", "v:0", "-show_entries", "stream=width,height,nb_frames,r_frame_rate"] + cmd_base[3:],
-        **_SUBPROCESS_FLAGS
-    )
-    if result.returncode == 0 and result.stdout:
-        info = json.loads(result.stdout)
-        streams = info.get("streams")
-        if streams:
-            s = streams[0]
-            w, h = int(s["width"]), int(s["height"])
-            nb, rfr = s.get("nb_frames"), s.get("r_frame_rate")
-            if nb and rfr:
-                try:
-                    num, den = map(int, rfr.split("/"))
-                    if den:
-                        d = float(nb) * den / num
-                        if d > 0:
-                            return w, h, d
-                except (ValueError, ZeroDivisionError):
-                    pass
-
-    if result.returncode != 0:
+    if result.returncode != 0 or not result.stdout:
         stderr = result.stderr.decode("utf-8", errors="replace") if result.stderr else ""
         sl = stderr.lower()
         for pat, msg in _ERROR_MAP:
             if pat.lower() in sl:
                 raise ConversionError(msg.format(path))
         raise ConversionError(f"ffprobe failed: {stderr.strip()}")
-    raise ConversionError(f"Could not determine video duration from any source. The file may be corrupted or use an unsupported format: {path}")
+
+    info = json.loads(result.stdout)
+    streams = info.get("streams") or []
+    if not streams:
+        raise ConversionError(
+            f"Could not determine video duration from any source. "
+            f"The file may be corrupted or use an unsupported format: {path}"
+        )
+
+    s = streams[0]
+    w, h = int(s["width"]), int(s["height"])
+    duration = _duration_from_stream(s)
+    if duration <= 0:
+        fmt = info.get("format") or {}
+        try:
+            duration = float(fmt.get("duration") or 0)
+        except (TypeError, ValueError):
+            duration = 0.0
+
+    if duration <= 0:
+        raise ConversionError(
+            f"Could not determine video duration from any source. "
+            f"The file may be corrupted or use an unsupported format: {path}"
+        )
+    return w, h, duration
 
 
 def calculate_target_resolution(

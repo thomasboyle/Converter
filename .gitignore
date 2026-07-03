@@ -25,3 +25,14 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Desktop (Electron / Vite)
+desktop/node_modules/
+desktop/frontend/node_modules/
+desktop/frontend/dist/
+desktop/dist/
+desktop/release/
+desktop/build/
+desktop/resources/ffmpeg-bin/
+desktop/resources/.ffmpeg-cache/
+desktop/.venv/

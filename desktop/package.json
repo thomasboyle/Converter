@@ -1,0 +1,29 @@
+{
+  "name": "converter-desktop",
+  "version": "1.0.0",
+  "description": "Desktop video convert / compress / trim (Converter)",
+  "author": "Converter",
+  "private": true,
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev:api": "cross-env CONVERTER_FAST=1 python server.py",
+    "dev:vite": "npm run dev --prefix frontend",
+    "dev": "concurrently -k -n api,vite,electron -c blue,green,magenta \"npm run dev:api\" \"npm run dev:vite\" \"cross-env ELECTRON_DEV=1 wait-on http://127.0.0.1:8742 http://127.0.0.1:5173 && electron .\"",
+    "build:ui": "npm run build --prefix frontend",
+    "copy:ffmpeg": "node scripts/copy-ffmpeg.cjs",
+    "build:server": "node scripts/clean-server-dist.cjs && node scripts/build-pyinstaller.cjs",
+    "dist": "npm run build:ui && npm run copy:ffmpeg && npm run build:server && electron-builder",
+    "dist:win": "npm run build:ui && npm run copy:ffmpeg && npm run build:server && electron-builder --win",
+    "dist:mac": "npm run build:ui && npm run copy:ffmpeg && npm run build:server && electron-builder --mac",
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "ffmpeg-static": "^5.2.0",
+    "ffprobe-static": "^3.1.0",
+    "wait-on": "^8.0.1"
+  }
+}
